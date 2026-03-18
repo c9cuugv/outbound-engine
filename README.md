@@ -114,7 +114,3 @@ FastAPI (REST + WebSocket)
       ├── Groq Llama 3.1 70B (free alternative)
       └── Anthropic Claude (paid, highest quality)
 ```
-
-## License
-
-MIT
