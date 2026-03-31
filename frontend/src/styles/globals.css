@@ -1,39 +1,39 @@
 @import url("https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500;600&display=swap");
 @import "tailwindcss";
 
-/* ── OutboundEngine Design Tokens ── */
+/* ── OutboundEngine Design Tokens (GitHub Primer Dark) ── */
 @theme {
-  /* Surfaces — deep navy-black, not pure black */
-  --color-surface-0: #070b12;
-  --color-surface-1: #0d1520;
-  --color-surface-2: #131e2e;
-  --color-surface-3: #1a2840;
-  --color-surface-hover: #1e2f49;
+  /* Surfaces — GitHub canvas dark */
+  --color-surface-0: #010409;
+  --color-surface-1: #0d1117;
+  --color-surface-2: #161b22;
+  --color-surface-3: #21262d;
+  --color-surface-hover: #30363d;
 
-  /* Ink — cool white, not warm */
-  --color-ink-primary: #dce6f5;
-  --color-ink-secondary: #7a90ad;
-  --color-ink-tertiary: #4f6680;
-  --color-ink-muted: #344d66;
+  /* Ink — GitHub fg colors */
+  --color-ink-primary: #e6edf3;
+  --color-ink-secondary: #8b949e;
+  --color-ink-tertiary: #6e7681;
+  --color-ink-muted: #484f58;
 
-  /* Accent — electric cyan, not the generic teal-green */
-  --color-accent: #00b4d8;
-  --color-accent-dim: #00b4d820;
-  --color-accent-hover: #0096c7;
-  --color-accent-bright: #48cae4;
+  /* Accent — GitHub accent blue */
+  --color-accent: #58a6ff;
+  --color-accent-dim: #58a6ff20;
+  --color-accent-hover: #79c0ff;
+  --color-accent-bright: #cae8ff;
 
-  --color-danger: #f25f5c;
-  --color-danger-dim: #f25f5c18;
-  --color-warning: #ffb703;
-  --color-warning-dim: #ffb70318;
-  --color-success: #06d6a0;
-  --color-success-dim: #06d6a018;
+  --color-danger: #f85149;
+  --color-danger-dim: #f8514918;
+  --color-warning: #d29922;
+  --color-warning-dim: #d2992218;
+  --color-success: #3fb950;
+  --color-success-dim: #3fb95018;
 
-  --color-badge-gray: #1e2d40;
-  --color-badge-yellow: #3d2e00;
-  --color-badge-green: #003d2e;
-  --color-badge-red: #3d1010;
-  --color-badge-blue: #0a2040;
+  --color-badge-gray: #21262d;
+  --color-badge-yellow: #2d2000;
+  --color-badge-green: #0f2d1a;
+  --color-badge-red: #2d0f0f;
+  --color-badge-blue: #0d1f33;
 
   --font-sans: "DM Sans", system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
@@ -227,9 +227,3 @@ select:focus {
   line-height: 1;
 }
 
-/* ── Scrollbar ── */
-::-webkit-scrollbar { width: 4px; height: 4px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--color-ink-muted); border-radius: 2px; }
-::-webkit-scrollbar-thumb:hover { background: var(--color-ink-tertiary); }
-* { scrollbar-width: thin; scrollbar-color: var(--color-ink-muted) transparent; }

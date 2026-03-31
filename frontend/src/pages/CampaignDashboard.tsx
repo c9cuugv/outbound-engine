@@ -9,7 +9,6 @@ import { pauseCampaign, resumeCampaign } from "../api/campaigns";
 import Badge, { statusVariant } from "../components/ui/Badge";
 import Button from "../components/ui/Button";
 import Card, { CardHeader, CardBody } from "../components/ui/Card";
-import { FullPageSpinner } from "../components/ui/Spinner";
 import {
   Send,
   Eye,

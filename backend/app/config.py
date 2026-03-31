@@ -1,3 +1,4 @@
+import os
 import sys
 
 from pydantic_settings import BaseSettings
@@ -52,10 +53,17 @@ settings = Settings()
 
 # ── Startup security assertions ──
 _INSECURE_SECRETS = {"change-me-in-production", "secret", "changeme", ""}
+_is_test_env = os.getenv("TESTING", "").lower() in ("1", "true", "yes") or "pytest" in sys.modules
 if settings.JWT_SECRET in _INSECURE_SECRETS:
-    print(
-        "SECURITY WARNING: JWT_SECRET is set to an insecure default value. "
-        "Set a strong random secret via the JWT_SECRET environment variable "
-        "before running in production.",
-        file=sys.stderr,
-    )
+    if _is_test_env:
+        print(
+            "SECURITY WARNING: JWT_SECRET is set to an insecure default value. "
+            "Allowed only because this is a test environment.",
+            file=sys.stderr,
+        )
+    else:
+        raise RuntimeError(
+            "CRITICAL: JWT_SECRET is set to an insecure default value "
+            f"({settings.JWT_SECRET!r}). Set a strong random secret via the "
+            "JWT_SECRET environment variable before running in production."
+        )

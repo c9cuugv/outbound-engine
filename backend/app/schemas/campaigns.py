@@ -52,6 +52,7 @@ class CampaignResponse(BaseModel):
     max_emails_per_day: int
     ab_test_enabled: bool
     status: str
+    launched_at: datetime | None = None
     total_leads: int
     emails_sent: int
     emails_opened: int

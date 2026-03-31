@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import type { LiveEvent } from "../types/analytics";
+import { getAccessToken } from "../api/client";
 
 /**
  * Hook for connecting to the campaign live event WebSocket.
  * Auto-reconnects on disconnect with exponential backoff.
+ * Sends JWT as the first WebSocket message (not in URL query params).
  */
 export function useWebSocket(campaignId: string | null) {
   const [events, setEvents] = useState<LiveEvent[]>([]);
@@ -14,9 +16,9 @@ export function useWebSocket(campaignId: string | null) {
   const connect = useCallback(() => {
     if (!campaignId) return;
 
-    const token = localStorage.getItem("access_token");
+    const token = getAccessToken();
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const url = `${protocol}//${window.location.host}/ws/campaigns/${campaignId}/events?token=${token}`;
+    const url = `${protocol}//${window.location.host}/ws/campaigns/${campaignId}/events`;
 
     const ws = new WebSocket(url);
     wsRef.current = ws;
@@ -24,6 +26,10 @@ export function useWebSocket(campaignId: string | null) {
     ws.onopen = () => {
       setConnected(true);
       retriesRef.current = 0;
+      // Send JWT as first message for authentication
+      if (token) {
+        ws.send(JSON.stringify({ type: "auth", token }));
+      }
     };
 
     ws.onmessage = (event) => {

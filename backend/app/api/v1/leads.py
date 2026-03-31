@@ -2,11 +2,13 @@ import math
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, status
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.auth import get_current_user
 from app.database import get_db
+from app.models.lead import Lead
 from app.models.user import User
 from app.schemas.leads import LeadCreate, LeadUpdate, LeadResponse, PaginatedResponse
 from app.services.lead_service import (
@@ -16,6 +18,7 @@ from app.services.lead_service import (
     update_lead,
     soft_delete_lead,
 )
+from app.workers.research_tasks import research_lead
 
 router = APIRouter(prefix="/api/v1/leads", tags=["leads"])
 
@@ -123,3 +126,20 @@ async def delete_lead(
     if not lead:
         raise HTTPException(status_code=404, detail="Lead not found")
     await soft_delete_lead(db, lead)
+
+
+@router.post("/research/all")
+async def research_all_leads(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Trigger background research for all leads with status 'new'. Returns count queued."""
+    result = await db.execute(
+        select(Lead).where(Lead.owner_id == current_user.id, Lead.status == "new")
+    )
+    leads = list(result.scalars().all())
+
+    for lead in leads:
+        research_lead.delay(str(lead.id))
+
+    return {"queued": len(leads)}

@@ -1,6 +1,8 @@
 import uuid
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel, Field
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -13,6 +15,12 @@ from app.models.lead import Lead
 from app.workers.email_gen_tasks import generate_campaign_emails
 
 router = APIRouter(prefix="/api/v1/campaigns/{campaign_id}/emails", tags=["email-review"])
+
+
+class EmailEditRequest(BaseModel):
+    """Validated schema for email edit requests."""
+    subject: Optional[str] = Field(None, max_length=200)
+    body: Optional[str] = Field(None, max_length=5000)
 
 
 async def _get_owned_campaign(
@@ -115,7 +123,7 @@ async def get_campaign_email(
 async def edit_email(
     campaign_id: uuid.UUID,
     email_id: uuid.UUID,
-    data: dict,
+    data: EmailEditRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -131,10 +139,10 @@ async def edit_email(
     if not email:
         raise HTTPException(status_code=404, detail="Email not found")
 
-    if "subject" in data:
-        email.subject = data["subject"]
-    if "body" in data:
-        email.body = data["body"]
+    if data.subject is not None:
+        email.subject = data.subject
+    if data.body is not None:
+        email.body = data.body
 
     email.was_manually_edited = True
     await db.commit()

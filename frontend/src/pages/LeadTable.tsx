@@ -17,7 +17,7 @@ import {
   X,
   ArrowUpDown,
 } from "lucide-react";
-import type { Lead, ResearchStatus } from "../types/lead";
+import type { Lead } from "../types/lead";
 
 /* ── Status dot colors ── */
 const STATUS_DOTS: Record<string, string> = {

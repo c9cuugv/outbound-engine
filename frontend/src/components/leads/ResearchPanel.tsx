@@ -1,5 +1,4 @@
 import { useLeadResearch } from "../../hooks/useLeads";
-import Badge, { statusVariant } from "../ui/Badge";
 import Spinner from "../ui/Spinner";
 import { AlertTriangle, Cpu, Target, Lightbulb, Building2 } from "lucide-react";
 import type { ResearchData } from "../../types/lead";

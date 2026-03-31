@@ -48,7 +48,7 @@ export async function fetchCampaignEmails(
 }
 
 export async function approveEmail(campaignId: string, emailId: string): Promise<void> {
-  await api.patch(`/campaigns/${campaignId}/emails/${emailId}`, { status: "approved" });
+  await api.post(`/campaigns/${campaignId}/emails/${emailId}/approve`);
 }
 
 export async function updateEmail(
@@ -66,6 +66,6 @@ export async function regenerateEmail(campaignId: string, emailId: string): Prom
 }
 
 export async function approveAllEmails(campaignId: string): Promise<{ approved: number }> {
-  const { data } = await api.post(`/campaigns/${campaignId}/emails/approve`);
+  const { data } = await api.post(`/campaigns/${campaignId}/emails/approve-all`);
   return data;
 }

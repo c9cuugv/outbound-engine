@@ -1,7 +1,8 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCreateCampaign, useGenerateEmails, useTemplates } from "../hooks/useCampaigns";
+import { useLeads } from "../hooks/useLeads";
 import Button from "../components/ui/Button";
 import Card, { CardBody } from "../components/ui/Card";
 import Spinner from "../components/ui/Spinner";
@@ -17,6 +18,7 @@ import {
   Loader2,
 } from "lucide-react";
 import type { CampaignWizardData, EmailTemplate } from "../types/campaign";
+import type { Lead } from "../types/lead";
 
 const STEPS = [
   { id: 1, label: "Product Info", icon: Package },
@@ -281,29 +283,95 @@ function SelectLeadsStep({
   data: CampaignWizardData;
   update: <K extends keyof CampaignWizardData>(key: K, val: CampaignWizardData[K]) => void;
 }) {
-  return (
-    <div>
-      <p className="mb-4 text-[13px] text-[var(--color-ink-secondary)]">
-        Select lead lists to include in this campaign.
-      </p>
-      {/* Placeholder for lead list selection — requires Dev A's list API */}
+  const { data: leadsPage, isLoading, isError } = useLeads({ per_page: 200 });
+  const leads: Lead[] = leadsPage?.items ?? [];
+
+  const toggleLead = (id: string) => {
+    const next = data.lead_list_ids.includes(id)
+      ? data.lead_list_ids.filter((x) => x !== id)
+      : [...data.lead_list_ids, id];
+    update("lead_list_ids", next);
+  };
+
+  const selectAll = () => update("lead_list_ids", leads.map((l) => l.id));
+  const deselectAll = () => update("lead_list_ids", []);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 size={20} className="animate-spin text-[var(--color-accent)]" />
+        <span className="ml-2 text-[13px] text-[var(--color-ink-secondary)]">Loading leads…</span>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="rounded-lg border border-dashed border-white/[0.12] px-6 py-10 text-center">
+        <p className="text-[13px] text-[var(--color-danger)]">Failed to load leads. Please try again.</p>
+      </div>
+    );
+  }
+
+  if (leads.length === 0) {
+    return (
       <div className="rounded-lg border border-dashed border-white/[0.12] px-6 py-10 text-center">
         <Users size={32} className="mx-auto mb-3 text-[var(--color-ink-muted)]" />
+        <p className="text-[13px] text-[var(--color-ink-secondary)]">No leads found. Import leads first.</p>
+      </div>
+    );
+  }
+
+  const selectedCount = data.lead_list_ids.length;
+
+  return (
+    <div>
+      <div className="mb-4 flex items-center justify-between">
         <p className="text-[13px] text-[var(--color-ink-secondary)]">
-          Lead list picker will connect to your imported leads.
+          {selectedCount} of {leads.length} leads selected
         </p>
-        <p className="mt-1 text-[12px] text-[var(--color-ink-muted)]">
-          {data.lead_list_ids.length} lists selected
-        </p>
-        {/* Temporary: allow proceeding for dev by adding a dummy ID */}
-        <Button
-          variant="secondary"
-          size="sm"
-          className="mt-4"
-          onClick={() => update("lead_list_ids", ["all"])}
-        >
-          Use All Leads
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="secondary" size="sm" onClick={selectAll} disabled={selectedCount === leads.length}>
+            Select All
+          </Button>
+          <Button variant="ghost" size="sm" onClick={deselectAll} disabled={selectedCount === 0}>
+            Deselect All
+          </Button>
+        </div>
+      </div>
+      <div className="max-h-72 overflow-y-auto rounded-lg border border-white/[0.06]">
+        {leads.map((lead) => {
+          const selected = data.lead_list_ids.includes(lead.id);
+          return (
+            <button
+              key={lead.id}
+              onClick={() => toggleLead(lead.id)}
+              className={`flex w-full items-center gap-3 border-b border-white/[0.04] px-4 py-2.5 text-left transition-colors last:border-b-0 ${
+                selected
+                  ? "bg-[var(--color-accent-dim)]"
+                  : "hover:bg-white/[0.03]"
+              }`}
+            >
+              <div
+                className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
+                  selected
+                    ? "border-[var(--color-accent)] bg-[var(--color-accent)]"
+                    : "border-white/[0.2] bg-transparent"
+                }`}
+              >
+                {selected && <Check size={10} className="text-[var(--color-surface-0)]" strokeWidth={3} />}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[13px] font-medium text-[var(--color-ink-primary)]">
+                  {lead.first_name} {lead.last_name}
+                </p>
+                <p className="truncate text-[11px] text-[var(--color-ink-muted)]">
+                  {lead.company_name ?? lead.email}
+                </p>
+              </div>
+            </button>
+          );
+        })}
       </div>
     </div>
   );

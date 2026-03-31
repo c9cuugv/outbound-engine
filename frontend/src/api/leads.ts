@@ -29,7 +29,7 @@ export async function fetchLeadResearch(id: string): Promise<ResearchData> {
 export async function importCSV(file: File): Promise<ImportResult> {
   const formData = new FormData();
   formData.append("file", file);
-  const { data } = await api.post("/leads/import", formData, {
+  const { data } = await api.post("/leads/bulk", formData, {
     headers: { "Content-Type": "multipart/form-data" },
   });
   return data;

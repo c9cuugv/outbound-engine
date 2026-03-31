@@ -5,6 +5,7 @@ import LoginPage from "./pages/LoginPage";
 
 const LeadTable = lazy(() => import("./pages/LeadTable"));
 const CampaignWizard = lazy(() => import("./pages/CampaignWizard"));
+const CampaignList = lazy(() => import("./pages/CampaignList"));
 const EmailReviewQueue = lazy(() => import("./pages/EmailReviewQueue"));
 const CampaignDashboard = lazy(() => import("./pages/CampaignDashboard"));
 
@@ -68,6 +69,14 @@ export default function App() {
           element={
             <Suspense fallback={<PageSkeleton />}>
               <LeadTable />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/campaigns"
+          element={
+            <Suspense fallback={<PageSkeleton />}>
+              <CampaignList />
             </Suspense>
           }
         />

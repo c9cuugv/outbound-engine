@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   useCampaign,
@@ -9,7 +9,6 @@ import {
   useApproveAllEmails,
   useLaunchCampaign,
 } from "../hooks/useCampaigns";
-import { useLeadResearch } from "../hooks/useLeads";
 import Badge, { statusVariant } from "../components/ui/Badge";
 import Button from "../components/ui/Button";
 import Card, { CardHeader, CardBody } from "../components/ui/Card";
@@ -163,7 +162,7 @@ function StatCard({ label, count, variant }: { label: string; count: number; var
 function LeadEmailGroup({
   leadId,
   emails,
-  campaignId,
+  campaignId: _campaignId,
   onApprove,
   onRegenerate,
   onUpdate,

@@ -4,6 +4,7 @@ import uuid
 from datetime import datetime, timedelta, timezone, time
 
 from app.workers.celery_app import celery_app
+from app.config import settings
 from app.database import async_session
 from app.models.campaign import Campaign
 from app.models.generated_email import GeneratedEmail
@@ -252,9 +253,6 @@ async def cancel_remaining_sequence(db, lead_id: uuid.UUID, campaign_id: uuid.UU
         email.status = "cancelled"
     logger.info(f"Cancelled remaining sequence for lead {lead_id} in campaign {campaign_id}")
 
-
-# Import settings for tracking domain
-from app.config import settings
 
 # Register beat schedule
 celery_app.conf.beat_schedule["process-scheduled-emails"] = {

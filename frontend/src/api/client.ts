@@ -1,5 +1,23 @@
 import axios from "axios";
 
+// ── In-memory token store (never persisted to localStorage) ──
+let _accessToken: string | null = null;
+let _refreshToken: string | null = null;
+
+export function setTokens(access: string, refresh: string) {
+  _accessToken = access;
+  _refreshToken = refresh;
+}
+
+export function getAccessToken(): string | null {
+  return _accessToken;
+}
+
+export function clearTokens() {
+  _accessToken = null;
+  _refreshToken = null;
+}
+
 /** Configured Axios instance for all API calls */
 const api = axios.create({
   baseURL: "/api/v1",
@@ -7,11 +25,10 @@ const api = axios.create({
   timeout: 30_000,
 });
 
-// Request interceptor — attach JWT token
+// Request interceptor — attach JWT token from memory
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("access_token");
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+  if (_accessToken) {
+    config.headers.Authorization = `Bearer ${_accessToken}`;
   }
   return config;
 });
@@ -25,16 +42,14 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && !original._retry) {
       original._retry = true;
       try {
-        const refreshToken = localStorage.getItem("refresh_token");
         const { data } = await axios.post("/api/v1/auth/refresh", {
-          refresh_token: refreshToken,
+          refresh_token: _refreshToken,
         });
-        localStorage.setItem("access_token", data.access_token);
-        original.headers.Authorization = `Bearer ${data.access_token}`;
+        _accessToken = data.access_token;
+        original.headers.Authorization = `Bearer ${_accessToken}`;
         return api(original);
       } catch {
-        localStorage.removeItem("access_token");
-        localStorage.removeItem("refresh_token");
+        clearTokens();
         window.location.href = "/login";
       }
     }
