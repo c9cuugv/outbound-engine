@@ -26,6 +26,15 @@ os.environ.setdefault("ALLOWED_ORIGINS", "http://localhost:3000")
 os.environ.setdefault("TRACKING_DOMAIN", "")
 os.environ.setdefault("GEMINI_API_KEY", "")
 
+# Patch PostgreSQL JSONB → JSON so SQLite can create tables in tests
+from sqlalchemy.dialects.sqlite.base import SQLiteTypeCompiler
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import JSON as _JSON
+SQLiteTypeCompiler.visit_JSONB = lambda self, type_, **kw: self.visit_JSON(_JSON(), **kw)
+
+# Patch PostgreSQL/standard Time → TEXT so SQLite can create tables in tests
+SQLiteTypeCompiler.visit_TIME = lambda self, type_, **kw: "TEXT"
+
 from app.database import Base, get_db  # noqa: E402 — must come after env setup
 from app.main import app  # noqa: E402
 from app.services.auth_service import create_access_token, create_user  # noqa: E402

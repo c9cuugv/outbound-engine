@@ -31,6 +31,7 @@ TEMPLATE_PAYLOAD = {
     "subject": "Quick follow-up",
     "body": "<p>Hi {{first_name}},</p><p>Just following up.</p>",
     "sequence_position": 1,
+    "generation_prompt": "Write a short follow-up email.",
 }
 
 
@@ -239,11 +240,11 @@ class TestTemplates:
         tmpl = await create_template(client, auth_headers)
         resp = await client.patch(
             f"/api/v1/templates/{tmpl['id']}",
-            json={"subject": "Updated Subject"},
+            json={"name": "Updated Name"},
             headers=auth_headers,
         )
         assert resp.status_code == 200
-        assert resp.json()["subject"] == "Updated Subject"
+        assert resp.json()["name"] == "Updated Name"
 
     async def test_create_template_unauthenticated_returns_401(self, client: AsyncClient):
         resp = await client.post("/api/v1/templates", json=TEMPLATE_PAYLOAD)
