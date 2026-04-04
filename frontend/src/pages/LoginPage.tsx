@@ -1,7 +1,7 @@
 import { useState, FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { Zap, AlertCircle, Loader2 } from "lucide-react";
-import api from "../api/client";
+import api, { setTokens } from "../api/client";
 
 type Mode = "login" | "register";
 
@@ -22,12 +22,10 @@ export default function LoginPage() {
     try {
       if (mode === "login") {
         const { data } = await api.post("/auth/login", { email, password });
-        localStorage.setItem("access_token", data.access_token);
-        if (data.refresh_token) localStorage.setItem("refresh_token", data.refresh_token);
+        setTokens(data.access_token, data.refresh_token ?? "");
       } else {
         const { data } = await api.post("/auth/register", { email, password, name });
-        localStorage.setItem("access_token", data.access_token);
-        if (data.refresh_token) localStorage.setItem("refresh_token", data.refresh_token);
+        setTokens(data.access_token, data.refresh_token ?? "");
       }
       navigate("/leads", { replace: true });
     } catch (err: unknown) {

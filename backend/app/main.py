@@ -1,5 +1,6 @@
 import asyncio
 from fastapi import FastAPI, Request, Response
+from fastapi.responses import RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -15,6 +16,7 @@ from app.api.v1.campaign_emails import router as campaign_emails_router
 from app.api.v1.tracking import router as tracking_router
 from app.api.v1.analytics import router as analytics_router
 from app.api.v1.websocket import router as websocket_router
+from app.api.v1.campaign_chat import router as campaign_chat_router
 
 # ── Rate limiter ──
 limiter = Limiter(key_func=get_remote_address)
@@ -64,6 +66,12 @@ app.include_router(campaign_emails_router)
 app.include_router(tracking_router)
 app.include_router(analytics_router)
 app.include_router(websocket_router)
+app.include_router(campaign_chat_router)
+
+
+@app.get("/", include_in_schema=False)
+async def root():
+    return RedirectResponse(url="/docs")
 
 
 @app.get("/health")

@@ -1,12 +1,17 @@
 import axios from "axios";
 
-// ── In-memory token store (never persisted to localStorage) ──
-let _accessToken: string | null = null;
-let _refreshToken: string | null = null;
+// ── Session-scoped token store (cleared when tab closes) ──
+const ACCESS_KEY = "access_token";
+const REFRESH_KEY = "refresh_token";
+
+let _accessToken: string | null = sessionStorage.getItem(ACCESS_KEY);
+let _refreshToken: string | null = sessionStorage.getItem(REFRESH_KEY);
 
 export function setTokens(access: string, refresh: string) {
   _accessToken = access;
   _refreshToken = refresh;
+  sessionStorage.setItem(ACCESS_KEY, access);
+  if (refresh) sessionStorage.setItem(REFRESH_KEY, refresh);
 }
 
 export function getAccessToken(): string | null {
@@ -16,6 +21,8 @@ export function getAccessToken(): string | null {
 export function clearTokens() {
   _accessToken = null;
   _refreshToken = null;
+  sessionStorage.removeItem(ACCESS_KEY);
+  sessionStorage.removeItem(REFRESH_KEY);
 }
 
 /** Configured Axios instance for all API calls */
@@ -45,7 +52,7 @@ api.interceptors.response.use(
         const { data } = await axios.post("/api/v1/auth/refresh", {
           refresh_token: _refreshToken,
         });
-        _accessToken = data.access_token;
+        setTokens(data.access_token, data.refresh_token ?? _refreshToken ?? "");
         original.headers.Authorization = `Bearer ${_accessToken}`;
         return api(original);
       } catch {

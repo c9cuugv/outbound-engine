@@ -1,0 +1,60 @@
+- generic [ref=e26]:
+  - complementary [ref=e27]:
+    - generic [ref=e29]:
+      - img [ref=e31]
+      - generic [ref=e33]:
+        - generic [ref=e34]: OutboundEngine
+        - generic [ref=e35]: AI Outreach
+    - paragraph [ref=e36]: Workspace
+    - navigation [ref=e37]:
+      - link "Leads" [ref=e38] [cursor=pointer]:
+        - /url: /leads
+        - img [ref=e40]
+        - generic [ref=e45]: Leads
+      - link "New Campaign" [ref=e46] [cursor=pointer]:
+        - /url: /campaigns/new
+        - img [ref=e47]
+        - generic [ref=e52]: New Campaign
+      - link "Campaigns" [ref=e53] [cursor=pointer]:
+        - /url: /campaigns
+        - img [ref=e54]
+        - generic [ref=e56]: Campaigns
+    - generic [ref=e60]: v1.0.0
+  - main [ref=e61]:
+    - generic [ref=e63]:
+      - generic [ref=e64]:
+        - generic [ref=e65]:
+          - heading "Leads" [level=1] [ref=e66]
+          - paragraph [ref=e67]: 0 total leads
+        - generic [ref=e68]:
+          - button "Research All" [ref=e69]:
+            - img [ref=e70]
+            - text: Research All
+          - button "Upload CSV" [ref=e72]:
+            - img [ref=e73]
+            - text: Upload CSV
+      - generic [ref=e76]:
+        - generic [ref=e77]:
+          - img [ref=e78]
+          - textbox "Search by name, email, or company..." [ref=e81]
+        - combobox [ref=e82]:
+          - option "All Statuses" [selected]
+          - option "New"
+          - option "Researched"
+          - option "In Sequence"
+          - option "Completed"
+          - option "Bounced"
+        - combobox [ref=e83]:
+          - option "All Research" [selected]
+          - option "Pending"
+          - option "In Progress"
+          - option "Completed"
+          - option "Failed"
+          - option "Needs Review"
+      - generic [ref=e84]:
+        - img [ref=e85]
+        - paragraph [ref=e90]: No leads yet
+        - paragraph [ref=e91]: Upload a CSV to get started.
+        - button "Upload CSV" [ref=e92]:
+          - img [ref=e93]
+          - text: Upload CSV

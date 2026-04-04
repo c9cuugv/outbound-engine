@@ -38,6 +38,13 @@ Thumbs.db
 *.swp
 *.swo
 
-# Logs
+# Logs & QA screenshots
 *.log
 logs/
+logs/*.png
+logs/*.jpg
+logs/*.jpeg
+
+#planning
+.gemini/
+.superpowers/

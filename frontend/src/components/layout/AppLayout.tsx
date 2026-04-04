@@ -1,9 +1,14 @@
-import { Outlet, useLocation } from "react-router-dom";
+import { Outlet, useLocation, Navigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import Sidebar from "./Sidebar";
+import { getAccessToken } from "../../api/client";
 
 export default function AppLayout() {
   const location = useLocation();
+
+  if (!getAccessToken()) {
+    return <Navigate to="/login" replace />;
+  }
 
   return (
     <div className="flex min-h-screen">
