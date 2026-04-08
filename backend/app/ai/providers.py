@@ -6,10 +6,11 @@ All providers implement the same AIProvider ABC.
 The app uses factory.get_provider(task) to get the right one.
 
 Supported providers:
-  - GeminiProvider   — FREE, default, no credit card needed
-  - GroqProvider     — FREE, Llama 3.1 70B on Groq hardware
-  - ClaudeCodeProvider — Uses local Claude Code CLI (Pro/Max plan)
+  - GeminiProvider       — FREE, default, no credit card needed
+  - GroqProvider         — FREE, Llama 3.1 70B on Groq hardware
+  - ClaudeCodeProvider   — Uses local Claude Code CLI (Pro/Max plan)
   - AnthropicAPIProvider — Paid Anthropic API, highest quality
+  - NvidiaProvider       — NVIDIA NIM (OpenAI-compatible), free credits at build.nvidia.com
 """
 
 from __future__ import annotations
@@ -145,14 +146,55 @@ class AnthropicAPIProvider(AIProvider):
             )
 
         self.client = Anthropic(api_key=api_key)
-        logger.info("AnthropicAPIProvider initialized with claude-sonnet-4-20250514")
+        logger.info("AnthropicAPIProvider initialized with claude-3-5-sonnet-20241022")
 
     async def generate(self, system_prompt: str, user_prompt: str) -> str:
         response = await asyncio.to_thread(
             self.client.messages.create,
-            model="claude-sonnet-4-20250514",
+            model="claude-3-5-sonnet-20241022",
             max_tokens=1000,
             system=system_prompt,
             messages=[{"role": "user", "content": user_prompt}],
         )
         return response.content[0].text
+
+
+class NvidiaProvider(AIProvider):
+    """NVIDIA NIM — OpenAI-compatible API, free credits at build.nvidia.com.
+
+    Uses the openai SDK pointed at NVIDIA's inference endpoint.
+    Default model: meta/llama-3.1-70b-instruct (free tier available).
+    Other options: nvidia/llama-3.1-nemotron-70b-instruct, mistralai/mixtral-8x7b-instruct-v0.1
+    Get API key: https://build.nvidia.com
+    """
+
+    NVIDIA_BASE_URL = "https://integrate.api.nvidia.com/v1"
+    DEFAULT_MODEL = "meta/llama-3.1-70b-instruct"
+
+    def __init__(self, api_key: str, model: str | None = None):
+        try:
+            from openai import AsyncOpenAI
+        except ImportError:
+            raise ImportError(
+                "openai package required for NVIDIA NIM. "
+                "Install with: pip install openai"
+            )
+
+        self.model = model or self.DEFAULT_MODEL
+        self.client = AsyncOpenAI(
+            api_key=api_key,
+            base_url=self.NVIDIA_BASE_URL,
+        )
+        logger.info("NvidiaProvider initialized with model %s", self.model)
+
+    async def generate(self, system_prompt: str, user_prompt: str) -> str:
+        response = await self.client.chat.completions.create(
+            model=self.model,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            temperature=0.7,
+            max_tokens=1000,
+        )
+        return response.choices[0].message.content

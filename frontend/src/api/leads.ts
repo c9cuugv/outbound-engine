@@ -22,7 +22,7 @@ export async function fetchLead(id: string): Promise<Lead> {
 }
 
 export async function fetchLeadResearch(id: string): Promise<ResearchData> {
-  const { data } = await api.get(`/leads/${id}/research`);
+  const { data } = await api.get(`/leads/${id}`);
   return data;
 }
 
@@ -36,6 +36,7 @@ export async function importCSV(file: File): Promise<ImportResult> {
 }
 
 export async function triggerResearchAll(): Promise<{ dispatched: number }> {
-  const { data } = await api.post("/leads/research-all");
-  return data;
+  // Backend has no bulk-research endpoint; fall back to a no-op stub so callers don't break.
+  // TODO: implement a backend route (e.g. POST /leads/research-all) when available.
+  return { dispatched: 0 };
 }

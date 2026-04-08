@@ -17,19 +17,19 @@ export async function createCampaign(payload: CampaignWizardData): Promise<Campa
 }
 
 export async function generateEmails(campaignId: string): Promise<void> {
-  await api.post(`/campaigns/${campaignId}/generate`);
+  await api.patch(`/campaigns/${campaignId}`, { status: "generating" });
 }
 
 export async function launchCampaign(campaignId: string): Promise<void> {
-  await api.post(`/campaigns/${campaignId}/launch`);
+  await api.patch(`/campaigns/${campaignId}`, { status: "active" });
 }
 
 export async function pauseCampaign(campaignId: string): Promise<void> {
-  await api.post(`/campaigns/${campaignId}/pause`);
+  await api.patch(`/campaigns/${campaignId}`, { status: "paused" });
 }
 
 export async function resumeCampaign(campaignId: string): Promise<void> {
-  await api.post(`/campaigns/${campaignId}/resume`);
+  await api.patch(`/campaigns/${campaignId}`, { status: "active" });
 }
 
 export async function fetchTemplates(): Promise<EmailTemplate[]> {

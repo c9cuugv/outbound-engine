@@ -70,7 +70,15 @@ async def create_list_endpoint(
         raise HTTPException(status_code=400, detail="Dynamic lists require filter_criteria")
 
     lead_list = await create_list(db, {**data.model_dump(), "owner_id": current_user.id})
-    return {**lead_list.__dict__, "member_count": 0}
+    return ListResponse(
+        id=lead_list.id,
+        name=lead_list.name,
+        description=lead_list.description,
+        filter_criteria=lead_list.filter_criteria,
+        is_dynamic=lead_list.is_dynamic,
+        member_count=0,
+        created_at=lead_list.created_at,
+    )
 
 
 @router.get("/lists", response_model=list[ListResponse])

@@ -45,11 +45,13 @@ export default function EmailReviewQueue() {
   if (campaignLoading || emailsLoading) return <FullPageSpinner label="Loading review queue..." />;
   if (!campaign || !emails) return null;
 
-  // Group emails by lead
-  const grouped = groupByLead(emails);
-  const draftCount = emails.filter((e) => e.status === "draft").length;
-  const approvedCount = emails.filter((e) => e.status === "approved").length;
-  const failedCount = emails.filter((e) => e.status === "failed").length;
+  // Backend returns { emails: { [lead_id]: GeneratedEmail[] }, total: number }
+  // "grouped" is the lead-keyed dict directly; flatten to a list for stats
+  const grouped: Record<string, GeneratedEmail[]> = (emails as any).emails ?? {};
+  const allEmails: GeneratedEmail[] = Object.values(grouped).flat();
+  const draftCount = allEmails.filter((e) => e.status === "draft").length;
+  const approvedCount = allEmails.filter((e) => e.status === "approved").length;
+  const failedCount = allEmails.filter((e) => e.status === "failed").length;
 
   const handleLaunch = async () => {
     await launchCampaign.mutateAsync(campaignId!);
@@ -304,12 +306,3 @@ function EmailCard({
   );
 }
 
-/* ── Helpers ── */
-function groupByLead(emails: GeneratedEmail[]): Record<string, GeneratedEmail[]> {
-  const groups: Record<string, GeneratedEmail[]> = {};
-  for (const email of emails) {
-    if (!groups[email.lead_id]) groups[email.lead_id] = [];
-    groups[email.lead_id]!.push(email);
-  }
-  return groups;
-}

@@ -9,6 +9,7 @@ from app.database import async_session
 from app.models.campaign import Campaign
 from app.models.generated_email import GeneratedEmail
 from app.models.lead import Lead
+from app.models.template import EmailTemplate
 from app.services.email_provider import get_email_provider, HardBounceError, SoftBounceError
 from app.services.tracking import inject_tracking
 
@@ -50,6 +51,16 @@ async def _schedule_emails_async(campaign_id: str):
             logger.warning(f"No approved emails for campaign {campaign_id}")
             return
 
+        # Load template days_delay map
+        template_ids = list({e.template_id for e in emails if e.template_id})
+        template_delay_map: dict = {}
+        if template_ids:
+            tmpl_result = await db.execute(
+                select(EmailTemplate).where(EmailTemplate.id.in_(template_ids))
+            )
+            for tmpl in tmpl_result.scalars().all():
+                template_delay_map[tmpl.id] = tmpl.days_delay
+
         # Parse sending configuration
         sending_days = set()
         for day_str in campaign.sending_days:
@@ -67,8 +78,9 @@ async def _schedule_emails_async(campaign_id: str):
         schedule_cursor = now
 
         for email in emails:
-            # Find the next valid sending slot
-            candidate_date = current_date + timedelta(days=email.sequence_position * 1)  # days_delay from template not accounted yet
+            # Find the next valid sending slot using template days_delay
+            days_delay = template_delay_map.get(email.template_id, email.sequence_position)
+            candidate_date = current_date + timedelta(days=days_delay)
 
             # Skip to next valid sending day
             while candidate_date.weekday() not in sending_days:
@@ -156,7 +168,9 @@ def send_email(self, email_id: str):
     Handles bounces with distinct retry behavior.
     """
     import asyncio
-    asyncio.run(_send_email_async(self, email_id))
+    result = asyncio.run(_send_email_async(self, email_id))
+    if result == "retry":
+        raise self.retry(countdown=60)
 
 
 async def _send_email_async(task_self, email_id: str):
@@ -189,7 +203,7 @@ async def _send_email_async(task_self, email_id: str):
             return
 
         # Inject tracking
-        tracked_body = inject_tracking(email.body, str(email.id))
+        tracked_body = await inject_tracking(email.body, str(email.id))
 
         # Build unsubscribe header
         unsub_url = f"https://{settings.TRACKING_DOMAIN}/t/u/{email.id}" if settings.TRACKING_DOMAIN else ""
@@ -236,8 +250,8 @@ async def _send_email_async(task_self, email_id: str):
             logger.warning(f"Soft bounce for email {email_id}: {e}")
             email.status = "scheduled"  # put back in queue
             await db.commit()
-            # Retry in 1 hour
-            raise task_self.retry(exc=e)
+            # Signal the synchronous wrapper to retry
+            return "retry"
 
 
 async def cancel_remaining_sequence(db, lead_id: uuid.UUID, campaign_id: uuid.UUID):

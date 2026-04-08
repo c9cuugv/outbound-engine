@@ -67,7 +67,7 @@ async def track_open(email_id: str, request: Request, db: AsyncSession = Depends
 @router.get("/c/{email_id}/{link_hash}")
 async def track_click(email_id: str, link_hash: str, request: Request, db: AsyncSession = Depends(get_db)):
     """Click tracking — redirects to original URL."""
-    original_url = get_original_url(link_hash)
+    original_url = await get_original_url(link_hash)
     if not original_url:
         return HTMLResponse("<h1>Link expired or not found</h1>", status_code=404)
 

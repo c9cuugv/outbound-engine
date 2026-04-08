@@ -23,8 +23,17 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: str = ""
     GROQ_API_KEY: str = ""
     ANTHROPIC_API_KEY: str = ""
+
+    # ─── NVIDIA NIM ───
+    NVIDIA_API_KEY: str = ""
+    NVIDIA_BASE_URL: str = "https://integrate.api.nvidia.com/v1"
+    NVIDIA_MODEL: str = "meta/llama-3.1-70b-instruct"
+
+    # Valid options: gemini | groq | claude_code | anthropic_api | nvidia
     RESEARCH_PROVIDER: str = "gemini"
+    # Valid options: gemini | groq | claude_code | anthropic_api | nvidia
     EMAIL_GEN_PROVIDER: str = "gemini"
+    # Valid options: gemini | groq | claude_code | anthropic_api | nvidia
     SENTIMENT_PROVIDER: str = "gemini"
 
     # ─── Email Sending ───

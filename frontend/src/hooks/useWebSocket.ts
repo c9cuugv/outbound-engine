@@ -18,12 +18,14 @@ export function useWebSocket(campaignId: string | null) {
 
     const token = getAccessToken();
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const url = `${protocol}//${window.location.host}/ws/campaigns/${campaignId}/events`;
+    const url = `${protocol}//${window.location.host}/ws/campaigns/${campaignId}`;
 
     const ws = new WebSocket(url);
     wsRef.current = ws;
 
     ws.onopen = () => {
+      // Backend expects the first message to be an auth message with the JWT token
+      ws.send(JSON.stringify({ type: "auth", token }));
       setConnected(true);
       retriesRef.current = 0;
       // Send JWT as first message for authentication

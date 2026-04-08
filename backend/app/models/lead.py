@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import String, Text, Boolean, DateTime, Index, ForeignKey
+from sqlalchemy import String, Text, Boolean, DateTime, Index, ForeignKey, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
@@ -21,7 +21,7 @@ class Lead(Base):
     )
     first_name: Mapped[str] = mapped_column(String(100), nullable=False)
     last_name: Mapped[str] = mapped_column(String(100), nullable=False)
-    email: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
+    email: Mapped[str] = mapped_column(String(255), nullable=False)
     company_name: Mapped[str | None] = mapped_column(String(255))
     company_domain: Mapped[str | None] = mapped_column(String(255))
     title: Mapped[str | None] = mapped_column(String(255))
@@ -56,6 +56,7 @@ class Lead(Base):
         Index("idx_leads_status", "status"),
         Index("idx_leads_company_domain", "company_domain"),
         Index("idx_leads_research_status", "research_status"),
+        UniqueConstraint("email", "owner_id", name="uq_lead_email_owner"),
     )
 
 

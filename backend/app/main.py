@@ -8,6 +8,7 @@ from slowapi.util import get_remote_address
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.config import settings
+from app.database import engine
 from app.api.v1.auth import router as auth_router
 from app.api.v1.leads import router as leads_router
 from app.api.v1.lists import router as lists_router
@@ -80,12 +81,9 @@ async def health():
 
     # ── Database ──
     try:
-        from sqlalchemy.ext.asyncio import create_async_engine
         from sqlalchemy import text
-        engine = create_async_engine(settings.DATABASE_URL, pool_pre_ping=True)
         async with engine.connect() as conn:
             await conn.execute(text("SELECT 1"))
-        await engine.dispose()
         checks["database"] = "ok"
     except Exception as e:
         checks["database"] = f"error: {e}"
@@ -114,6 +112,12 @@ async def health():
             checks["gemini"] = "ok" if models else "no models returned"
     except Exception as e:
         checks["gemini"] = f"error: {e}"
+
+    # ── NVIDIA NIM API key ──
+    if not settings.NVIDIA_API_KEY:
+        checks["nvidia"] = "not configured"
+    else:
+        checks["nvidia"] = "configured"
 
     overall = "ok" if all(v == "ok" for v in checks.values()) else "degraded"
     return {"status": overall, **checks}

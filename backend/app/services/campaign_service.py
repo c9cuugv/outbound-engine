@@ -37,8 +37,7 @@ async def get_campaigns(db: AsyncSession, owner_id: uuid.UUID) -> list[Campaign]
 
 async def update_campaign(db: AsyncSession, campaign: Campaign, data: dict) -> Campaign:
     for key, value in data.items():
-        if value is not None:
-            setattr(campaign, key, value)
+        setattr(campaign, key, value)
     await db.commit()
     await db.refresh(campaign)
     return campaign
@@ -46,18 +45,22 @@ async def update_campaign(db: AsyncSession, campaign: Campaign, data: dict) -> C
 
 # ── Template Service ──
 
-async def create_template(db: AsyncSession, data: dict) -> EmailTemplate:
+async def create_template(db: AsyncSession, data: dict, owner_id=None) -> EmailTemplate:
     template = EmailTemplate(**data)
+    if owner_id is not None:
+        template.owner_id = owner_id
     db.add(template)
     await db.commit()
     await db.refresh(template)
     return template
 
 
-async def get_templates(db: AsyncSession) -> list[EmailTemplate]:
-    result = await db.execute(
-        select(EmailTemplate).order_by(EmailTemplate.sequence_position)
-    )
+async def get_templates(db: AsyncSession, owner_id=None) -> list[EmailTemplate]:
+    query = select(EmailTemplate)
+    if owner_id is not None:
+        query = query.where(EmailTemplate.owner_id == owner_id)
+    query = query.order_by(EmailTemplate.sequence_position)
+    result = await db.execute(query)
     return list(result.scalars().all())
 
 

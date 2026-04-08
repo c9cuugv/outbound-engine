@@ -141,7 +141,7 @@ async def create_template_endpoint(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    return await create_template(db, data.model_dump())
+    return await create_template(db, data.model_dump(), owner_id=current_user.id)
 
 
 @router.get("/templates", response_model=list[TemplateResponse])
@@ -149,7 +149,7 @@ async def list_templates(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    return await get_templates(db)
+    return await get_templates(db, owner_id=current_user.id)
 
 
 @router.get("/templates/{template_id}", response_model=TemplateResponse)

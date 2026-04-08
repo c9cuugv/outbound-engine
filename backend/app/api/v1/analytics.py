@@ -70,6 +70,8 @@ async def get_campaign_analytics(
             cast(GeneratedEmail.sent_at, Date).label("date"),
             func.count().label("sent"),
             func.count().filter(GeneratedEmail.opened_at.isnot(None)).label("opened"),
+            func.count().filter(GeneratedEmail.clicked_at.isnot(None)).label("clicked"),
+            func.count().filter(GeneratedEmail.replied_at.isnot(None)).label("replied"),
         )
         .where(
             GeneratedEmail.campaign_id == campaign_id,
@@ -79,7 +81,13 @@ async def get_campaign_analytics(
         .order_by(cast(GeneratedEmail.sent_at, Date))
     )
     by_day = [
-        {"date": str(row.date), "sent": row.sent, "opened": row.opened}
+        {
+            "date": str(row.date),
+            "sent": row.sent,
+            "opened": row.opened,
+            "clicked": row.clicked,
+            "replied": row.replied,
+        }
         for row in day_result.all()
     ]
 

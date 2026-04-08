@@ -49,8 +49,8 @@ class LeadResponse(BaseModel):
     status: str
     research_status: str
     research_completed_at: datetime | None = None
-    tags: list = []
-    custom_fields: dict = {}
+    tags: list = Field(default_factory=list)
+    custom_fields: dict = Field(default_factory=dict)
     source: str | None = None
     created_at: datetime
     updated_at: datetime
