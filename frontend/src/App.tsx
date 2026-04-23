@@ -4,9 +4,14 @@ import AppLayout from "./components/layout/AppLayout";
 import LoginPage from "./pages/LoginPage";
 
 const LeadTable = lazy(() => import("./pages/LeadTable"));
+const CampaignList = lazy(() => import("./pages/CampaignList"));
 const CampaignWizard = lazy(() => import("./pages/CampaignWizard"));
 const EmailReviewQueue = lazy(() => import("./pages/EmailReviewQueue"));
 const CampaignDashboard = lazy(() => import("./pages/CampaignDashboard"));
+const DashboardHome = lazy(() => import("./pages/DashboardHome"));
+const Analytics     = lazy(() => import("./pages/Analytics"));
+const Templates     = lazy(() => import("./pages/Templates"));
+const Settings      = lazy(() => import("./pages/Settings"));
 
 function PageSkeleton() {
   return (
@@ -62,12 +67,20 @@ export default function App() {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route element={<AppLayout />}>
-        <Route path="/" element={<Navigate to="/leads" replace />} />
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route
           path="/leads"
           element={
             <Suspense fallback={<PageSkeleton />}>
               <LeadTable />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/campaigns"
+          element={
+            <Suspense fallback={<PageSkeleton />}>
+              <CampaignList />
             </Suspense>
           }
         />
@@ -92,6 +105,38 @@ export default function App() {
           element={
             <Suspense fallback={<PageSkeleton />}>
               <CampaignDashboard />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/dashboard"
+          element={
+            <Suspense fallback={<PageSkeleton />}>
+              <DashboardHome />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/analytics"
+          element={
+            <Suspense fallback={<PageSkeleton />}>
+              <Analytics />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/templates"
+          element={
+            <Suspense fallback={<PageSkeleton />}>
+              <Templates />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/settings"
+          element={
+            <Suspense fallback={<PageSkeleton />}>
+              <Settings />
             </Suspense>
           }
         />
