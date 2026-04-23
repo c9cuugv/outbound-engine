@@ -1,11 +1,14 @@
 import { NavLink, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Users, Rocket, BarChart3, Zap } from "lucide-react";
+import { Zap, LayoutDashboard, BarChart3, Users, Mail, TrendingUp, Settings } from "lucide-react";
 
 const NAV_ITEMS = [
-  { to: "/leads", label: "Leads", icon: Users },
-  { to: "/campaigns/new", label: "New Campaign", icon: Rocket },
+  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/campaigns", label: "Campaigns", icon: BarChart3 },
+  { to: "/leads",     label: "Contacts",  icon: Users },
+  { to: "/templates", label: "Templates", icon: Mail },
+  { to: "/analytics", label: "Analytics", icon: TrendingUp },
+  { to: "/settings",  label: "Settings",  icon: Settings },
 ];
 
 export default function Sidebar() {
@@ -16,7 +19,7 @@ export default function Sidebar() {
       className="fixed left-0 top-0 z-40 flex h-screen w-[200px] flex-col bg-[var(--color-surface-1)]"
       style={{ borderRight: "1px solid rgba(255,255,255,0.055)" }}
     >
-      {/* 3px cyan anchor bar — gives the sidebar an intentional identity */}
+      {/* Cyan accent bar */}
       <div
         className="h-[3px] w-full shrink-0"
         style={{
@@ -53,16 +56,12 @@ export default function Sidebar() {
       {/* Navigation */}
       <nav className="flex flex-1 flex-col gap-px px-2">
         {NAV_ITEMS.map(({ to, label, icon: Icon }) => {
-          const isActive =
-            to === "/leads"
-              ? location.pathname === "/leads" || location.pathname === "/"
-              : location.pathname.startsWith(to);
+          const isActive = location.pathname.startsWith(to);
 
           return (
             <NavLink
               key={to}
               to={to}
-              end={to === "/campaigns"}
               className="relative flex items-center gap-2.5 px-3 py-2 text-[13px] font-medium"
               style={{ borderRadius: "4px" }}
             >
@@ -105,18 +104,18 @@ export default function Sidebar() {
             </NavLink>
           );
         })}
+
       </nav>
 
       {/* Footer */}
-      <div
-        className="px-4 py-3.5"
-        style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}
-      >
-        <div className="flex items-center gap-1.5">
+      <div className="px-4 py-3.5" style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+        <div className="flex items-center gap-2">
           <div
-            className="h-1.5 w-1.5 rounded-full"
-            style={{ background: "var(--color-success)" }}
-          />
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold"
+            style={{ background: "rgba(0,180,216,0.15)", color: "var(--color-accent)" }}
+          >
+            U
+          </div>
           <span className="font-mono text-[10px] text-[var(--color-ink-muted)]">v1.0.0</span>
         </div>
       </div>
