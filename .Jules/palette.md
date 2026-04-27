@@ -1,0 +1,3 @@
+## 2024-04-27 - Added aria-labels to icon-only buttons
+**Learning:** Found several icon-only buttons across the frontend application (LeadTable, EmailReviewQueue, CampaignChatSetup) that lacked ARIA labels, making them inaccessible to screen readers. This indicates a potential pattern of relying solely on visual icons for button functionality in this codebase.
+**Action:** Always verify that buttons containing only icons (like Close, Previous, Next, Send) include descriptive `aria-label` attributes to ensure keyboard and screen reader accessibility.

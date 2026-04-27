@@ -19,7 +19,6 @@ import {
   Loader2,
 } from "lucide-react";
 import type { CampaignWizardData, EmailTemplate } from "../types/campaign";
-import type { Lead } from "../types/lead";
 
 const STEPS = [
   { id: 1, label: "Product Info", icon: Package },
