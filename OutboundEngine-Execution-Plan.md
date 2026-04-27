@@ -186,7 +186,7 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/outbound"
     REDIS_URL: str = "redis://localhost:6379/0"
-    JWT_SECRET: str = "change-me-in-production"
+    JWT_SECRET: str
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
@@ -262,7 +262,7 @@ python-multipart==0.0.9
 ```env
 DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/outbound
 REDIS_URL=redis://localhost:6379/0
-JWT_SECRET=change-me-in-production
+JWT_SECRET=
 GEMINI_API_KEY=
 GROQ_API_KEY=
 ANTHROPIC_API_KEY=
