@@ -152,6 +152,7 @@ export default function CampaignChatSetup({ onComplete }: Props) {
           className="h-9 flex-1 rounded-lg border border-white/[0.08] bg-[var(--color-surface-2)] px-3 text-[13px] text-[var(--color-ink-primary)] placeholder-[var(--color-ink-muted)] outline-none transition-all focus:border-[var(--color-accent)]/50 disabled:opacity-50"
         />
         <button
+          aria-label="Send message"
           onClick={() => void handleSend()}
           disabled={isStreaming || !input.trim()}
           className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-[var(--color-accent)] text-[var(--color-surface-0)] transition-all hover:opacity-90 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"

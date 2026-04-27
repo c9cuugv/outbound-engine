@@ -129,6 +129,7 @@ export default function EmailReviewQueue() {
                 <span className="text-[13px] font-semibold">Research Data</span>
               </div>
               <button
+                aria-label="Close"
                 onClick={() => setResearchLeadId(null)}
                 className="text-[var(--color-ink-muted)] hover:text-[var(--color-ink-primary)]"
               >
