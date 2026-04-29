@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useId } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCreateCampaign, useGenerateEmails, useTemplates } from "../hooks/useCampaigns";
@@ -449,8 +449,8 @@ function SendingSettingsStep({
         <InputField label="Sender Email" value={data.sender_email} onChange={(v) => update("sender_email", v)} placeholder="alex@outboundengine.com" type="email" />
       </div>
 
-      <div>
-        <label className="mb-2 block text-[12px] font-medium text-[var(--color-ink-secondary)]">Sending Days</label>
+      <div role="group" aria-labelledby="sending-days-label">
+        <label id="sending-days-label" className="mb-2 block text-[12px] font-medium text-[var(--color-ink-secondary)]">Sending Days</label>
         <div className="flex gap-2">
           {DAYS.map((day) => (
             <button
@@ -500,10 +500,12 @@ function InputField({
   type?: string;
   hint?: string;
 }) {
+  const id = useId();
   return (
     <div>
-      <label className="mb-1.5 block text-[12px] font-medium text-[var(--color-ink-secondary)]">{label}</label>
+      <label htmlFor={id} className="mb-1.5 block text-[12px] font-medium text-[var(--color-ink-secondary)]">{label}</label>
       <input
+        id={id}
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -528,10 +530,12 @@ function TextareaField({
   placeholder?: string;
   hint?: string;
 }) {
+  const id = useId();
   return (
     <div>
-      <label className="mb-1.5 block text-[12px] font-medium text-[var(--color-ink-secondary)]">{label}</label>
+      <label htmlFor={id} className="mb-1.5 block text-[12px] font-medium text-[var(--color-ink-secondary)]">{label}</label>
       <textarea
+        id={id}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}

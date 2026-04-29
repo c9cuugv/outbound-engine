@@ -1,3 +1,5 @@
 ## 2024-04-27 - Added aria-labels to icon-only buttons
 **Learning:** Found several icon-only buttons across the frontend application (LeadTable, EmailReviewQueue, CampaignChatSetup) that lacked ARIA labels, making them inaccessible to screen readers. This indicates a potential pattern of relying solely on visual icons for button functionality in this codebase.
-**Action:** Always verify that buttons containing only icons (like Close, Previous, Next, Send) include descriptive `aria-label` attributes to ensure keyboard and screen reader accessibility.
+**Action:** Always verify that buttons containing only icons (like Close, Previous, Next, Send) include descriptive `aria-label` attributes to ensure keyboard and screen reader accessibility.## 2024-04-29 - Form Accessibility
+**Learning:** Reusable input components (`InputField`, `TextareaField`) and standalone form fields require unique identifiers to properly associate `<label>` with `<input>`/`<textarea>`. Without `htmlFor`/`id` linking, click areas are reduced and screen readers fail to announce the field name. React`s `useId()` hook is effective for generating stable, unique IDs in reusable components.
+**Action:** Always link form labels to inputs using `htmlFor` and `id`, using `useId()` for components to prevent collisions.
