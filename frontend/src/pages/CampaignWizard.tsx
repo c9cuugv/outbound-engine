@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useId } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCreateCampaign, useGenerateEmails, useTemplates } from "../hooks/useCampaigns";
@@ -500,10 +500,12 @@ function InputField({
   type?: string;
   hint?: string;
 }) {
+  const id = useId();
   return (
     <div>
-      <label className="mb-1.5 block text-[12px] font-medium text-[var(--color-ink-secondary)]">{label}</label>
+      <label htmlFor={id} className="mb-1.5 block text-[12px] font-medium text-[var(--color-ink-secondary)]">{label}</label>
       <input
+        id={id}
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -528,10 +530,12 @@ function TextareaField({
   placeholder?: string;
   hint?: string;
 }) {
+  const id = useId();
   return (
     <div>
-      <label className="mb-1.5 block text-[12px] font-medium text-[var(--color-ink-secondary)]">{label}</label>
+      <label htmlFor={id} className="mb-1.5 block text-[12px] font-medium text-[var(--color-ink-secondary)]">{label}</label>
       <textarea
+        id={id}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
