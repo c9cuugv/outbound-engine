@@ -136,3 +136,54 @@ Script runs against the live API (not directly against DB) so it validates the f
 | API iteration | Native uvicorn | Faster restarts than Docker rebuild cycle |
 | Frontend | Vite dev server | Hot reload; no Docker build needed |
 | Seed approach | httpx → REST API | Tests full API layer, not just DB; matches user's preference for Python scripts |
+
+---
+
+## Council Findings — Folded Into Same Plan
+
+From LLM Council review (2026-05-19). These ship in the same plan as setup.
+
+### Priority 1 — Foundation (must ship before testing)
+
+**Status enum + idempotent send guard**
+- Add `status` enum to `GeneratedEmail`: `pending | sent | failed | bounced`
+- Add unique constraint on `(campaign_id, lead_id)` on `GeneratedEmail`
+- New alembic migration: `006_generated_email_status_idempotency.py`
+- Without this: race conditions produce duplicate emails on retry/crash
+
+### Priority 2 — Compliance (legal liability without it)
+
+**Bounce + unsubscribe flags on Lead + webhook receivers**
+- Add `is_bounced: bool`, `is_unsubscribed: bool` to `Lead` model
+- Migration: `007_lead_bounce_unsubscribe_flags.py`
+- Filter bounced/unsubscribed leads from all send queries
+- New endpoints: `POST /webhooks/bounce`, `POST /webhooks/unsubscribe`
+  - Resend calls these automatically on bounce/unsubscribe events
+  - Sets flag on Lead by email address
+
+### Priority 3 — Targeting (makes campaigns non-trivial)
+
+**Tag-based campaign targeting**
+- `tags` already exists on `Lead` model (JSONB array)
+- Add `target_tags: list[str] | None` to `Campaign` model
+- Migration: `008_campaign_target_tags.py`
+- When `target_tags` set: filter leads WHERE tags overlap target_tags
+- When `None`: all leads in list (current behaviour, unchanged)
+
+### Priority 4 — Fast wins (no dependencies)
+
+**Email validation on CSV import**
+- MX record check via `dnspython` (already in requirements)
+- Role-account filter: reject `info@`, `noreply@`, `admin@`, `support@`, `hello@`
+- Applied at import time in `POST /leads/bulk`
+
+**API rate limiting**
+- Redis TTL counter at middleware level
+- Already have `slowapi` in requirements + rate limiter in `main.py`
+- Tighten limits on send-triggering endpoints
+
+### Parked (council consensus)
+- ICP scoring — low signal without enrichment data
+- A/B variants — premature without send volume
+- Domain warmup ramp — needs scheduler (Celery Beat, future)
+- Daily send limits — half-feature without SenderAccount model
