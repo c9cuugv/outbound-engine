@@ -1,16 +1,19 @@
-import { Outlet, useLocation } from "react-router-dom";
+import { Outlet, useLocation, Navigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import Sidebar from "./Sidebar";
+import { getAccessToken } from "../../api/client";
 
 export default function AppLayout() {
   const location = useLocation();
 
+  if (!getAccessToken()) {
+    return <Navigate to="/login" replace />;
+  }
+
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen bg-background">
       <Sidebar />
-      <main className="ml-[200px] flex-1 px-8 py-8">
-        {/* No AnimatePresence mode="wait" — that caused a black void between routes.
-            Simple key-based fade keeps the old page visible until new one loads. */}
+      <main className="ml-[260px] flex-1 px-10 py-10">
         <AnimatePresence>
           <motion.div
             key={location.pathname}

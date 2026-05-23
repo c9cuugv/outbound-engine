@@ -1,0 +1,23 @@
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - generic [ref=e6]:
+      - img [ref=e8]
+      - generic [ref=e10]:
+        - generic [ref=e11]: OutboundEngine
+        - generic [ref=e12]: AI Outreach
+    - paragraph [ref=e13]: Workspace
+    - navigation [ref=e14]:
+      - link "Leads" [ref=e15] [cursor=pointer]:
+        - /url: /leads
+        - img [ref=e16]
+        - generic [ref=e21]: Leads
+      - link "New Campaign" [ref=e22] [cursor=pointer]:
+        - /url: /campaigns/new
+        - img [ref=e23]
+        - generic [ref=e28]: New Campaign
+      - link "Campaigns" [ref=e29] [cursor=pointer]:
+        - /url: /campaigns
+        - img [ref=e31]
+        - generic [ref=e33]: Campaigns
+    - generic [ref=e37]: v1.0.0
+  - main [ref=e38]

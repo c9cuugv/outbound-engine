@@ -2,25 +2,25 @@ import hashlib
 import re
 import uuid
 
-import redis
+import redis.asyncio
 from bs4 import BeautifulSoup
 
 from app.config import settings
 
-redis_client = redis.Redis.from_url(settings.REDIS_URL)
+redis_client = redis.asyncio.Redis.from_url(settings.REDIS_URL)
 
 LINK_TTL_SECONDS = 90 * 24 * 60 * 60  # 90 days
 
 
-def inject_tracking(html_body: str, email_id: str) -> str:
+async def inject_tracking(html_body: str, email_id: str) -> str:
     """
     Inject tracking pixel and rewrite links in email HTML.
-    
+
     1. Appends 1×1 transparent pixel <img> before </body>
     2. Rewrites all <a href> links to point to tracking server
     3. Appends unsubscribe link
     4. Stores original URLs in Redis with 90-day TTL
-    
+
     Returns the modified HTML body.
     Skips entirely if TRACKING_DOMAIN is not configured.
     """
@@ -41,7 +41,7 @@ def inject_tracking(html_body: str, email_id: str) -> str:
         ).hexdigest()[:16]
 
         # Store original URL in Redis
-        redis_client.setex(f"link:{link_hash}", LINK_TTL_SECONDS, original_url)
+        await redis_client.setex(f"link:{link_hash}", LINK_TTL_SECONDS, original_url)
 
         # Rewrite link
         link["href"] = f"https://{tracking_domain}/t/c/{email_id}/{link_hash}"
@@ -71,7 +71,7 @@ def inject_tracking(html_body: str, email_id: str) -> str:
     return str(soup)
 
 
-def get_original_url(link_hash: str) -> str | None:
+async def get_original_url(link_hash: str) -> str | None:
     """Retrieve original URL from Redis by link hash."""
-    result = redis_client.get(f"link:{link_hash}")
+    result = await redis_client.get(f"link:{link_hash}")
     return result.decode() if result else None

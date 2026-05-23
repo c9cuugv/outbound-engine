@@ -1,7 +1,16 @@
 import uuid
 from datetime import datetime, time
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
-from pydantic import BaseModel, Field
+
+def _parse_time(v: object) -> time:
+    if isinstance(v, time):
+        return v
+    if isinstance(v, str):
+        # Accept "HH:MM" or "HH:MM:SS"
+        parts = v.split(":")
+        return time(int(parts[0]), int(parts[1]), int(parts[2]) if len(parts) > 2 else 0)
+    raise ValueError(f"Cannot parse time value: {v!r}")
 
 
 class CampaignCreate(BaseModel):
@@ -11,15 +20,20 @@ class CampaignCreate(BaseModel):
     icp_description: str | None = None
     value_prop: str | None = None
     system_prompt: str | None = None
-    sender_email: str | None = None
+    sender_email: EmailStr | None = None
     sender_name: str | None = None
-    reply_to_email: str | None = None
+    reply_to_email: EmailStr | None = None
     sending_timezone: str = "America/New_York"
     sending_days: list[str] = ["mon", "tue", "wed", "thu", "fri"]
-    sending_window_start: str = "09:00"
-    sending_window_end: str = "17:00"
-    max_emails_per_day: int = 50
+    sending_window_start: time = time(9, 0)
+    sending_window_end: time = time(17, 0)
+    max_emails_per_day: int = Field(default=50, ge=1, le=500)
     ab_test_enabled: bool = False
+
+    @field_validator("sending_window_start", "sending_window_end", mode="before")
+    @classmethod
+    def coerce_time(cls, v: object) -> time:
+        return _parse_time(v)
 
 
 class CampaignUpdate(BaseModel):
@@ -29,12 +43,12 @@ class CampaignUpdate(BaseModel):
     icp_description: str | None = None
     value_prop: str | None = None
     system_prompt: str | None = None
-    sender_email: str | None = None
+    sender_email: EmailStr | None = None
     sender_name: str | None = None
-    reply_to_email: str | None = None
+    reply_to_email: EmailStr | None = None
     sending_timezone: str | None = None
     sending_days: list[str] | None = None
-    max_emails_per_day: int | None = None
+    max_emails_per_day: int | None = Field(None, ge=1, le=500)
 
 
 class CampaignResponse(BaseModel):
@@ -44,6 +58,7 @@ class CampaignResponse(BaseModel):
     product_description: str | None = None
     icp_description: str | None = None
     value_prop: str | None = None
+    system_prompt: str | None = None
     sender_email: str | None = None
     sender_name: str | None = None
     reply_to_email: str | None = None
@@ -52,6 +67,7 @@ class CampaignResponse(BaseModel):
     max_emails_per_day: int
     ab_test_enabled: bool
     status: str
+    launched_at: datetime | None = None
     total_leads: int
     emails_sent: int
     emails_opened: int

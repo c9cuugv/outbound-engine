@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import String, Text, Integer, Boolean, DateTime, Float, Index, ForeignKey
+from sqlalchemy import String, Text, Integer, Boolean, DateTime, Float, Index, ForeignKey, text
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
@@ -52,6 +52,6 @@ class GeneratedEmail(Base):
 
     __table_args__ = (
         Index("idx_emails_status", "status"),
-        Index("idx_emails_scheduled", "scheduled_at", postgresql_where=(status == "scheduled")),
+        Index("idx_emails_scheduled", "scheduled_at", postgresql_where=text("status = 'scheduled'")),
         Index("idx_emails_campaign", "campaign_id"),
     )

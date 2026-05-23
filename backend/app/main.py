@@ -1,5 +1,6 @@
 import asyncio
 from fastapi import FastAPI, Request, Response
+from fastapi.responses import RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -7,6 +8,7 @@ from slowapi.util import get_remote_address
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.config import settings
+from app.database import engine
 from app.api.v1.auth import router as auth_router
 from app.api.v1.leads import router as leads_router
 from app.api.v1.lists import router as lists_router
@@ -15,6 +17,7 @@ from app.api.v1.campaign_emails import router as campaign_emails_router
 from app.api.v1.tracking import router as tracking_router
 from app.api.v1.analytics import router as analytics_router
 from app.api.v1.websocket import router as websocket_router
+from app.api.v1.demo import router as demo_router
 
 # ── Rate limiter ──
 limiter = Limiter(key_func=get_remote_address)
@@ -64,6 +67,12 @@ app.include_router(campaign_emails_router)
 app.include_router(tracking_router)
 app.include_router(analytics_router)
 app.include_router(websocket_router)
+app.include_router(demo_router)
+
+
+@app.get("/", include_in_schema=False)
+async def root():
+    return RedirectResponse(url="/docs")
 
 
 @app.get("/health")
@@ -72,12 +81,9 @@ async def health():
 
     # ── Database ──
     try:
-        from sqlalchemy.ext.asyncio import create_async_engine
         from sqlalchemy import text
-        engine = create_async_engine(settings.DATABASE_URL, pool_pre_ping=True)
         async with engine.connect() as conn:
             await conn.execute(text("SELECT 1"))
-        await engine.dispose()
         checks["database"] = "ok"
     except Exception as e:
         checks["database"] = f"error: {e}"
@@ -107,5 +113,12 @@ async def health():
     except Exception as e:
         checks["gemini"] = f"error: {e}"
 
-    overall = "ok" if all(v == "ok" for v in checks.values()) else "degraded"
+    # ── NVIDIA NIM API key ──
+    if not settings.NVIDIA_API_KEY:
+        checks["nvidia"] = "not configured"
+    else:
+        checks["nvidia"] = "configured"
+
+    has_error = any(v.startswith("error:") for v in checks.values())
+    overall = "ok" if not has_error else "degraded"
     return {"status": overall, **checks}

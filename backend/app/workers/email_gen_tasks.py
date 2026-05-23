@@ -5,7 +5,7 @@ from app.workers.celery_app import celery_app
 from app.database import async_session
 from app.models.campaign import Campaign
 from app.models.generated_email import GeneratedEmail
-from app.models.lead import Lead
+from app.models.lead import Lead, LeadListMember
 from app.models.template import EmailTemplate
 
 from app.ai.factory import get_provider
@@ -54,9 +54,12 @@ async def _generate_emails_async(campaign_id: str):
             await db.commit()
             return
 
-        # 3. Get all eligible leads (research completed)
+        # 3. Get all eligible leads (research completed, scoped to campaign owner)
         leads_result = await db.execute(
-            select(Lead).where(Lead.research_status == "completed")
+            select(Lead).where(
+                Lead.research_status == "completed",
+                Lead.owner_id == campaign.owner_id,
+            )
         )
         leads = list(leads_result.scalars().all())
 

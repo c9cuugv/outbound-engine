@@ -47,6 +47,7 @@ class Campaign(Base):
 
     # Status
     status: Mapped[str] = mapped_column(String(20), default="draft")
+    launched_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     # Stats (denormalized for performance)
     total_leads: Mapped[int] = mapped_column(Integer, default=0)

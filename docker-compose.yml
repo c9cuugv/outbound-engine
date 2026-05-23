@@ -1,67 +1,102 @@
-version: '3.8'
-
 services:
   db:
-    image: postgres:16
+    image: postgres:16-alpine
+    command: >
+      postgres
+      -c shared_buffers=64MB
+      -c effective_cache_size=128MB
+      -c max_connections=20
+      -c work_mem=2MB
+      -c maintenance_work_mem=32MB
     environment:
       POSTGRES_DB: outbound
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 5s
+      interval: 30s
       timeout: 5s
       retries: 5
+      start_period: 20s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
 
   redis:
     image: redis:7-alpine
+    command: redis-server --save "" --appendonly no --maxmemory 96mb --maxmemory-policy allkeys-lru
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
+      interval: 30s
       timeout: 5s
       retries: 5
+      start_period: 10s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 128M
 
   api:
     build: ./backend
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-    ports:
-      - "8000:8000"
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1 --loop uvloop --log-level warning
     env_file: .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/outbound
+      REDIS_URL: redis://:@redis:6379/0
     depends_on:
       db:
         condition: service_healthy
-      redis:
-        condition: service_healthy
-    volumes:
-      - ./backend:/app
+    restart: unless-stopped
 
   worker:
     build: ./backend
-    command: celery -A app.workers.celery_app worker --loglevel=info
+    command: python -m celery -A app.workers.celery_app worker --loglevel=info --concurrency=2
     env_file: .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/outbound
+      REDIS_URL: redis://:@redis:6379/0
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
-    volumes:
-      - ./backend:/app
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
 
-  beat:
-    build: ./backend
-    command: celery -A app.workers.celery_app beat --loglevel=info
-    env_file: .env
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:80"
     depends_on:
-      redis:
+      api:
         condition: service_healthy
-    volumes:
-      - ./backend:/app
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost/index.html || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 64M
 
 volumes:
   pgdata:

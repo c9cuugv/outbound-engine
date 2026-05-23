@@ -1,5 +1,30 @@
 import axios from "axios";
 
+// ── Session-scoped token store (cleared when tab closes) ──
+const ACCESS_KEY = "access_token";
+const REFRESH_KEY = "refresh_token";
+
+let _accessToken: string | null = sessionStorage.getItem(ACCESS_KEY);
+let _refreshToken: string | null = sessionStorage.getItem(REFRESH_KEY);
+
+export function setTokens(access: string, refresh: string) {
+  _accessToken = access;
+  _refreshToken = refresh;
+  sessionStorage.setItem(ACCESS_KEY, access);
+  if (refresh) sessionStorage.setItem(REFRESH_KEY, refresh);
+}
+
+export function getAccessToken(): string | null {
+  return _accessToken;
+}
+
+export function clearTokens() {
+  _accessToken = null;
+  _refreshToken = null;
+  sessionStorage.removeItem(ACCESS_KEY);
+  sessionStorage.removeItem(REFRESH_KEY);
+}
+
 /** Configured Axios instance for all API calls */
 const api = axios.create({
   baseURL: "/api/v1",
@@ -7,35 +32,46 @@ const api = axios.create({
   timeout: 30_000,
 });
 
-// Request interceptor — attach JWT token
+// Request interceptor — attach JWT token from memory
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("access_token");
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+  if (_accessToken) {
+    config.headers.Authorization = `Bearer ${_accessToken}`;
   }
   return config;
 });
 
 // Response interceptor — handle 401 token refresh
+let _refreshPromise: Promise<void> | null = null;
+
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const original = error.config;
 
-    if (error.response?.status === 401 && !original._retry) {
+    if (error.response?.status === 401 && !original._retry && !original.url?.includes("/auth/")) {
       original._retry = true;
+
+      if (!_refreshPromise) {
+        _refreshPromise = axios
+          .post("/api/v1/auth/refresh", { refresh_token: _refreshToken })
+          .then(({ data }) => {
+            setTokens(data.access_token, data.refresh_token ?? _refreshToken ?? "");
+          })
+          .catch(() => {
+            clearTokens();
+            window.location.href = "/login";
+          })
+          .finally(() => {
+            _refreshPromise = null;
+          });
+      }
+
       try {
-        const refreshToken = localStorage.getItem("refresh_token");
-        const { data } = await axios.post("/api/v1/auth/refresh", {
-          refresh_token: refreshToken,
-        });
-        localStorage.setItem("access_token", data.access_token);
-        original.headers.Authorization = `Bearer ${data.access_token}`;
+        await _refreshPromise;
+        original.headers.Authorization = `Bearer ${_accessToken}`;
         return api(original);
       } catch {
-        localStorage.removeItem("access_token");
-        localStorage.removeItem("refresh_token");
-        window.location.href = "/login";
+        return Promise.reject(error);
       }
     }
     return Promise.reject(error);

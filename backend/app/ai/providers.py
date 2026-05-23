@@ -6,10 +6,11 @@ All providers implement the same AIProvider ABC.
 The app uses factory.get_provider(task) to get the right one.
 
 Supported providers:
-  - GeminiProvider   — FREE, default, no credit card needed
-  - GroqProvider     — FREE, Llama 3.1 70B on Groq hardware
-  - ClaudeCodeProvider — Uses local Claude Code CLI (Pro/Max plan)
+  - GeminiProvider       — FREE, default, no credit card needed
+  - GroqProvider         — FREE, Llama 3.1 70B on Groq hardware
+  - ClaudeCodeProvider   — Uses local Claude Code CLI (Pro/Max plan)
   - AnthropicAPIProvider — Paid Anthropic API, highest quality
+  - NvidiaProvider       — NVIDIA NIM (OpenAI-compatible), free credits at build.nvidia.com
 """
 
 from __future__ import annotations
@@ -145,14 +146,114 @@ class AnthropicAPIProvider(AIProvider):
             )
 
         self.client = Anthropic(api_key=api_key)
-        logger.info("AnthropicAPIProvider initialized with claude-sonnet-4-20250514")
+        logger.info("AnthropicAPIProvider initialized with claude-3-5-sonnet-20241022")
 
     async def generate(self, system_prompt: str, user_prompt: str) -> str:
         response = await asyncio.to_thread(
             self.client.messages.create,
-            model="claude-sonnet-4-20250514",
+            model="claude-3-5-sonnet-20241022",
             max_tokens=1000,
             system=system_prompt,
             messages=[{"role": "user", "content": user_prompt}],
         )
         return response.content[0].text
+
+
+class NvidiaProvider(AIProvider):
+    """NVIDIA NIM — OpenAI-compatible API, free credits at build.nvidia.com.
+
+    Uses the openai SDK pointed at NVIDIA's inference endpoint.
+    Default model: meta/llama-3.1-70b-instruct (free tier available).
+    Other options: nvidia/llama-3.1-nemotron-70b-instruct, mistralai/mixtral-8x7b-instruct-v0.1
+    Get API key: https://build.nvidia.com
+    """
+
+    NVIDIA_BASE_URL = "https://integrate.api.nvidia.com/v1"
+    DEFAULT_MODEL = "meta/llama-3.1-70b-instruct"
+
+    def __init__(self, api_key: str, model: str | None = None):
+        try:
+            from openai import AsyncOpenAI
+        except ImportError:
+            raise ImportError(
+                "openai package required for NVIDIA NIM. "
+                "Install with: pip install openai"
+            )
+
+        self.model = model or self.DEFAULT_MODEL
+        self.client = AsyncOpenAI(
+            api_key=api_key,
+            base_url=self.NVIDIA_BASE_URL,
+        )
+        logger.info("NvidiaProvider initialized with model %s", self.model)
+
+    async def generate(self, system_prompt: str, user_prompt: str) -> str:
+        response = await self.client.chat.completions.create(
+            model=self.model,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            temperature=0.7,
+            max_tokens=1000,
+        )
+        return response.choices[0].message.content
+
+
+class StubProvider(AIProvider):
+    """Zero-config stub provider for demos and offline testing. No API key needed.
+
+    Detects task type from system_prompt keywords and returns canned but
+    schema-valid JSON responses so the full pipeline runs without any LLM key.
+    """
+
+    async def generate(self, system_prompt: str, user_prompt: str) -> str:
+        import json
+
+        sp = system_prompt.lower()
+
+        if "research analyst" in sp or "research brief" in sp:
+            company = "this company"
+            for line in user_prompt.splitlines():
+                if "Company:" in line:
+                    company = line.split("Company:")[-1].strip().split("(")[0].strip()
+                    break
+            return json.dumps({
+                "company_summary": f"{company} builds B2B software that helps sales teams automate outreach and track engagement.",
+                "industry": "SaaS / Sales Technology",
+                "company_size_estimate": "11-50",
+                "tech_stack_signals": ["React", "Node.js", "HubSpot", "Salesforce"],
+                "potential_pain_points": [
+                    "Manual outreach slows rep productivity",
+                    "No visibility into email engagement metrics",
+                    "Inconsistent follow-up across the team",
+                ],
+                "personalization_hooks": [
+                    "Scaling their SDR team based on hiring signals",
+                    "Using CRM but missing automation layer",
+                    "Recent job posts suggest growth phase",
+                ],
+                "confidence_score": 0.72,
+            })
+
+        if "sentiment" in sp or "classify" in sp or "reply" in sp:
+            return json.dumps({
+                "sentiment": "interested",
+                "confidence": 0.91,
+                "reasoning": "Prospect asked follow-up questions and requested a demo link.",
+            })
+
+        # Default: email generation
+        return json.dumps({
+            "subject_options": [
+                "Quick question about your outbound process",
+                "How teams like yours 3x reply rates",
+            ],
+            "body": (
+                "Hi,\n\n"
+                "I noticed your team is scaling outreach. We help B2B sales teams run "
+                "personalized sequences that get real replies — not just opens.\n\n"
+                "Worth a 15-minute conversation this week?\n\n"
+                "Best,"
+            ),
+        })

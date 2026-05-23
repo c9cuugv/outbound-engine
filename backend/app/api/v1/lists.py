@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.auth import get_current_user
+from app.api.v1.deps import get_or_404
 from app.database import get_db
 from app.models.user import User
 from app.schemas.leads import LeadResponse
@@ -70,7 +71,15 @@ async def create_list_endpoint(
         raise HTTPException(status_code=400, detail="Dynamic lists require filter_criteria")
 
     lead_list = await create_list(db, {**data.model_dump(), "owner_id": current_user.id})
-    return {**lead_list.__dict__, "member_count": 0}
+    return ListResponse(
+        id=lead_list.id,
+        name=lead_list.name,
+        description=lead_list.description,
+        filter_criteria=lead_list.filter_criteria,
+        is_dynamic=lead_list.is_dynamic,
+        member_count=0,
+        created_at=lead_list.created_at,
+    )
 
 
 @router.get("/lists", response_model=list[ListResponse])
@@ -89,9 +98,7 @@ async def get_list_detail(
     current_user: User = Depends(get_current_user),
 ):
     """Get list details with members (evaluates filter if dynamic)."""
-    lead_list = await get_list_by_id(db, list_id, owner_id=current_user.id)
-    if not lead_list:
-        raise HTTPException(status_code=404, detail="List not found")
+    lead_list = await get_or_404(get_list_by_id, db, list_id, current_user.id, detail="List not found")
 
     if lead_list.is_dynamic and lead_list.filter_criteria:
         members = await get_dynamic_list_members(db, lead_list.filter_criteria, owner_id=current_user.id)
@@ -118,9 +125,7 @@ async def add_leads_to_list_endpoint(
     current_user: User = Depends(get_current_user),
 ):
     """Add leads to a static list. Returns 400 for dynamic lists."""
-    lead_list = await get_list_by_id(db, list_id, owner_id=current_user.id)
-    if not lead_list:
-        raise HTTPException(status_code=404, detail="List not found")
+    lead_list = await get_or_404(get_list_by_id, db, list_id, current_user.id, detail="List not found")
     if lead_list.is_dynamic:
         raise HTTPException(status_code=400, detail="Cannot manually add leads to a dynamic list")
 
@@ -136,9 +141,7 @@ async def remove_leads_from_list_endpoint(
     current_user: User = Depends(get_current_user),
 ):
     """Remove leads from a static list."""
-    lead_list = await get_list_by_id(db, list_id, owner_id=current_user.id)
-    if not lead_list:
-        raise HTTPException(status_code=404, detail="List not found")
+    lead_list = await get_or_404(get_list_by_id, db, list_id, current_user.id, detail="List not found")
     if lead_list.is_dynamic:
         raise HTTPException(status_code=400, detail="Cannot manually remove leads from a dynamic list")
 

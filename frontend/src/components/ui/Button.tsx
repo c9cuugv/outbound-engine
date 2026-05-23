@@ -12,7 +12,7 @@ const VARIANT_CLASSES: Record<Variant, string> = {
   ghost:
     "text-[var(--color-ink-secondary)] hover:text-[var(--color-ink-primary)] hover:bg-white/[0.04]",
   danger:
-    "bg-[var(--color-danger-dim)] text-red-400 border border-red-500/20 hover:bg-red-500/20",
+    "bg-[var(--color-danger-dim)] text-[var(--color-danger)] border border-[var(--color-danger)]/20 hover:bg-[var(--color-danger)]/20",
 };
 
 const SIZE_CLASSES: Record<Size, string> = {
