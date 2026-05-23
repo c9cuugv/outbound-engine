@@ -1,0 +1,25 @@
+# Setup Cleanup Plan
+
+- [ ] Map active modules vs parked `not working/` modules.
+- [ ] Reproduce setup failures:
+  - backend tests
+  - frontend build
+  - Docker Compose config/start path
+- [ ] Lock root causes before edits:
+  - stale Docker services or entrypoints
+  - env/config drift
+  - docs/start script drift
+  - app/runtime regressions
+- [ ] Fix vertical slice 1: local backend setup boots, tests green.
+- [ ] Fix vertical slice 2: frontend builds against active API surface.
+- [ ] Fix vertical slice 3: Docker Compose only starts supported services.
+- [ ] Remove or quarantine dead Docker wiring and stale docs.
+- [ ] Write `NOT_WORKING.md`:
+  - removed surface
+  - root cause
+  - current status
+  - re-enable conditions
+- [ ] Verify fresh:
+  - `pytest backend/tests -q`
+  - `npm run build`
+  - `docker compose config`

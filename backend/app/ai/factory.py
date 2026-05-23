@@ -25,6 +25,7 @@ from app.ai.providers import (
     GeminiProvider,
     GroqProvider,
     NvidiaProvider,
+    StubProvider,
 )
 
 logger = logging.getLogger(__name__)
@@ -33,9 +34,10 @@ logger = logging.getLogger(__name__)
 _PROVIDER_REGISTRY: dict[str, tuple[type[AIProvider], str | None]] = {
     "gemini": (GeminiProvider, "GEMINI_API_KEY"),
     "groq": (GroqProvider, "GROQ_API_KEY"),
-    "claude_code": (ClaudeCodeProvider, None),  # No API key needed
+    "claude_code": (ClaudeCodeProvider, None),
     "anthropic_api": (AnthropicAPIProvider, "ANTHROPIC_API_KEY"),
     "nvidia": (NvidiaProvider, "NVIDIA_API_KEY"),
+    "stub": (StubProvider, None),  # Zero-config for demos
 }
 
 DEFAULT_PROVIDER = "gemini"

@@ -17,9 +17,9 @@ if [ ! -f ".env" ]; then
   exit 1
 fi
 
-# ─── Build and start all services ───
+# ─── Build and start supported services ───
 echo "Building and starting OutboundEngine services..."
-docker compose up --build -d
+docker compose up --build -d db redis migrate api worker frontend
 
 # ─── Wait for API to be healthy ───
 echo "Waiting for API to be ready..."
@@ -35,10 +35,6 @@ until curl -sf http://localhost:8000/health > /dev/null 2>&1; do
   ELAPSED=$((ELAPSED + 3))
 done
 echo "API is healthy."
-
-# ─── Run database migrations ───
-echo "Running database migrations..."
-docker compose exec api alembic upgrade head
 
 # ─── Success ───
 echo ""

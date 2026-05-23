@@ -2,11 +2,11 @@ import math
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, status
-from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.auth import get_current_user
+from app.api.v1.deps import get_or_404
 from app.database import get_db
 from app.models.lead import Lead
 from app.models.user import User
@@ -84,10 +84,7 @@ async def get_lead(
     current_user: User = Depends(get_current_user),
 ):
     """Get a single lead with all fields."""
-    lead = await get_lead_by_id(db, lead_id, current_user.id)
-    if not lead:
-        raise HTTPException(status_code=404, detail="Lead not found")
-    return lead
+    return await get_or_404(get_lead_by_id, db, lead_id, current_user.id, detail="Lead not found")
 
 
 @router.patch("/{lead_id}", response_model=LeadResponse)
@@ -98,10 +95,7 @@ async def update_lead_endpoint(
     current_user: User = Depends(get_current_user),
 ):
     """Partial update — only provided fields are changed."""
-    lead = await get_lead_by_id(db, lead_id, current_user.id)
-    if not lead:
-        raise HTTPException(status_code=404, detail="Lead not found")
-
+    lead = await get_or_404(get_lead_by_id, db, lead_id, current_user.id, detail="Lead not found")
     update_data = data.model_dump(exclude_unset=True)
     if not update_data:
         raise HTTPException(status_code=400, detail="No fields to update")
@@ -122,24 +116,41 @@ async def delete_lead(
     current_user: User = Depends(get_current_user),
 ):
     """Soft delete: sets status to 'deleted'."""
-    lead = await get_lead_by_id(db, lead_id, current_user.id)
-    if not lead:
-        raise HTTPException(status_code=404, detail="Lead not found")
+    lead = await get_or_404(get_lead_by_id, db, lead_id, current_user.id, detail="Lead not found")
     await soft_delete_lead(db, lead)
 
 
-@router.post("/research/all")
-async def research_all_leads(
+@router.post("/{lead_id}/research", status_code=status.HTTP_202_ACCEPTED)
+async def trigger_lead_research(
+    lead_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Trigger background research for all leads with status 'new'. Returns count queued."""
+    """Trigger the background research task for a single lead."""
+    lead = await get_or_404(get_lead_by_id, db, lead_id, current_user.id, detail="Lead not found")
+    research_lead.delay(str(lead.id))
+    return {"status": "accepted", "message": "Research task queued"}
+
+
+@router.post("/research-all", status_code=status.HTTP_202_ACCEPTED)
+async def trigger_research_all(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Trigger research tasks for all pending leads owned by current_user."""
+    from sqlalchemy import select
+    from app.models.lead import Lead
+
     result = await db.execute(
-        select(Lead).where(Lead.owner_id == current_user.id, Lead.status == "new")
+        select(Lead).where(
+            Lead.owner_id == current_user.id,
+            Lead.research_status == "pending"
+        )
     )
     leads = list(result.scalars().all())
-
+    
     for lead in leads:
         research_lead.delay(str(lead.id))
+        
+    return {"status": "accepted", "queued_count": len(leads)}
 
-    return {"queued": len(leads)}

@@ -8,6 +8,7 @@ POST /api/v1/auth/refresh
 
 import pytest
 from httpx import AsyncClient
+from sqlalchemy.exc import OperationalError
 
 pytestmark = pytest.mark.asyncio
 
@@ -62,6 +63,44 @@ class TestRegister:
         resp = await client.post("/api/v1/auth/register", json={})
         assert resp.status_code == 422
 
+    async def test_register_db_unavailable_returns_503(
+        self, client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+    ):
+        async def fail_get_user_by_email(*_args, **_kwargs):
+            raise OperationalError("SELECT 1", {}, ConnectionRefusedError("db down"))
+
+        monkeypatch.setattr(
+            "app.api.v1.auth.get_user_by_email",
+            fail_get_user_by_email,
+        )
+
+        resp = await client.post("/api/v1/auth/register", json={
+            "email": "new@example.com",
+            "name": "New User",
+            "password": "StrongPass1!",
+        })
+        assert resp.status_code == 503
+        assert "database unavailable" in resp.json()["detail"].lower()
+
+    async def test_register_connection_refused_returns_503(
+        self, client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+    ):
+        async def fail_get_user_by_email(*_args, **_kwargs):
+            raise ConnectionRefusedError("db down")
+
+        monkeypatch.setattr(
+            "app.api.v1.auth.get_user_by_email",
+            fail_get_user_by_email,
+        )
+
+        resp = await client.post("/api/v1/auth/register", json={
+            "email": "new@example.com",
+            "name": "New User",
+            "password": "StrongPass1!",
+        })
+        assert resp.status_code == 503
+        assert "database unavailable" in resp.json()["detail"].lower()
+
 
 # ---------------------------------------------------------------------------
 # /login
@@ -105,6 +144,42 @@ class TestLogin:
     async def test_login_missing_password_returns_422(self, client: AsyncClient):
         resp = await client.post("/api/v1/auth/login", json={"email": "x@y.com"})
         assert resp.status_code == 422
+
+    async def test_login_db_unavailable_returns_503(
+        self, client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+    ):
+        async def fail_get_user_by_email(*_args, **_kwargs):
+            raise OperationalError("SELECT 1", {}, ConnectionRefusedError("db down"))
+
+        monkeypatch.setattr(
+            "app.api.v1.auth.get_user_by_email",
+            fail_get_user_by_email,
+        )
+
+        resp = await client.post("/api/v1/auth/login", json={
+            "email": "testuser@example.com",
+            "password": "SecurePass123!",
+        })
+        assert resp.status_code == 503
+        assert "database unavailable" in resp.json()["detail"].lower()
+
+    async def test_login_connection_refused_returns_503(
+        self, client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+    ):
+        async def fail_get_user_by_email(*_args, **_kwargs):
+            raise ConnectionRefusedError("db down")
+
+        monkeypatch.setattr(
+            "app.api.v1.auth.get_user_by_email",
+            fail_get_user_by_email,
+        )
+
+        resp = await client.post("/api/v1/auth/login", json={
+            "email": "testuser@example.com",
+            "password": "SecurePass123!",
+        })
+        assert resp.status_code == 503
+        assert "database unavailable" in resp.json()["detail"].lower()
 
 
 # ---------------------------------------------------------------------------

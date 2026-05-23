@@ -41,23 +41,37 @@ api.interceptors.request.use((config) => {
 });
 
 // Response interceptor — handle 401 token refresh
+let _refreshPromise: Promise<void> | null = null;
+
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const original = error.config;
 
-    if (error.response?.status === 401 && !original._retry) {
+    if (error.response?.status === 401 && !original._retry && !original.url?.includes("/auth/")) {
       original._retry = true;
+
+      if (!_refreshPromise) {
+        _refreshPromise = axios
+          .post("/api/v1/auth/refresh", { refresh_token: _refreshToken })
+          .then(({ data }) => {
+            setTokens(data.access_token, data.refresh_token ?? _refreshToken ?? "");
+          })
+          .catch(() => {
+            clearTokens();
+            window.location.href = "/login";
+          })
+          .finally(() => {
+            _refreshPromise = null;
+          });
+      }
+
       try {
-        const { data } = await axios.post("/api/v1/auth/refresh", {
-          refresh_token: _refreshToken,
-        });
-        setTokens(data.access_token, data.refresh_token ?? _refreshToken ?? "");
+        await _refreshPromise;
         original.headers.Authorization = `Bearer ${_accessToken}`;
         return api(original);
       } catch {
-        clearTokens();
-        window.location.href = "/login";
+        return Promise.reject(error);
       }
     }
     return Promise.reject(error);

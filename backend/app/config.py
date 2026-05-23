@@ -1,7 +1,12 @@
 import os
 import sys
+from pathlib import Path
 
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+DEFAULT_ENV_FILE = REPO_ROOT / ".env"
 
 
 class Settings(BaseSettings):
@@ -10,7 +15,7 @@ class Settings(BaseSettings):
     REDIS_URL: str = "redis://localhost:6379/0"
 
     # ─── Authentication ───
-    JWT_SECRET: str = "change-me-in-production"
+    JWT_SECRET: str = ""
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
@@ -18,6 +23,10 @@ class Settings(BaseSettings):
     # ─── CORS ───
     # Comma-separated list of allowed origins, e.g. "https://app.example.com,https://www.example.com"
     ALLOWED_ORIGINS: str = "http://localhost:3000"
+
+    @property
+    def allowed_origins_list(self) -> list[str]:
+        return [o.strip() for o in self.ALLOWED_ORIGINS.split(",") if o.strip()]
 
     # ─── AI Providers ───
     GEMINI_API_KEY: str = ""
@@ -49,20 +58,22 @@ class Settings(BaseSettings):
     IMAP_EMAIL: str = ""
     IMAP_PASSWORD: str = ""
 
-    @property
-    def allowed_origins_list(self) -> list[str]:
-        """Return ALLOWED_ORIGINS as a parsed list."""
-        return [o.strip() for o in self.ALLOWED_ORIGINS.split(",") if o.strip()]
-
-    class Config:
-        env_file = ".env"
-        extra = "ignore"
+    model_config = SettingsConfigDict(
+        env_file=DEFAULT_ENV_FILE,
+        extra="ignore",
+    )
 
 
 settings = Settings()
 
 # ── Startup security assertions ──
-_INSECURE_SECRETS = {"change-me-in-production", "secret", "changeme", ""}
+_INSECURE_SECRETS = {
+    "change-me-in-production",
+    "CHANGE_ME_generate_a_random_secret",
+    "secret",
+    "changeme",
+    "",
+}
 _is_test_env = os.getenv("TESTING", "").lower() in ("1", "true", "yes") or "pytest" in sys.modules
 if settings.JWT_SECRET in _INSECURE_SECRETS:
     if _is_test_env:

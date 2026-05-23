@@ -1,61 +1,43 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, Component, type ReactNode } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import AppLayout from "./components/layout/AppLayout";
 import LoginPage from "./pages/LoginPage";
 
 const LeadTable = lazy(() => import("./pages/LeadTable"));
-const CampaignWizard = lazy(() => import("./pages/CampaignWizard"));
 const CampaignList = lazy(() => import("./pages/CampaignList"));
+const CampaignBuilder = lazy(() => import("./pages/CampaignBuilder"));
 const EmailReviewQueue = lazy(() => import("./pages/EmailReviewQueue"));
 const CampaignDashboard = lazy(() => import("./pages/CampaignDashboard"));
 
 function PageSkeleton() {
   return (
-    <div className="space-y-4 py-2">
-      {/* Header skeleton */}
-      <div className="flex items-center justify-between">
-        <div className="space-y-2">
-          <div className="skeleton h-6 w-36 rounded-md" />
-          <div className="skeleton h-3.5 w-24 rounded" />
-        </div>
-        <div className="flex gap-2">
-          <div className="skeleton h-8 w-24 rounded-lg" />
-          <div className="skeleton h-8 w-28 rounded-lg" />
-        </div>
-      </div>
-      {/* Filter bar skeleton */}
-      <div className="flex gap-3">
-        <div className="skeleton h-9 flex-1 rounded-lg" />
-        <div className="skeleton h-9 w-32 rounded-lg" />
-        <div className="skeleton h-9 w-32 rounded-lg" />
-      </div>
-      {/* Table skeleton */}
-      <div className="overflow-hidden rounded-xl border border-white/[0.06] bg-[var(--color-surface-1)]">
-        <div className="border-b border-white/[0.06] px-4 py-3">
-          <div className="flex gap-6">
-            {[80, 140, 100, 90, 70, 80, 70].map((w, i) => (
-              <div key={i} className="skeleton h-3.5 rounded" style={{ width: w }} />
-            ))}
-          </div>
-        </div>
-        {Array.from({ length: 8 }).map((_, i) => (
-          <div
-            key={i}
-            className="flex items-center gap-6 border-b border-white/[0.03] px-4 py-3"
-            style={{ opacity: 1 - i * 0.1 }}
-          >
-            <div className="skeleton h-3.5 w-28 rounded" />
-            <div className="skeleton h-3 w-40 rounded" />
-            <div className="skeleton h-3.5 w-24 rounded" />
-            <div className="skeleton h-3.5 w-20 rounded" />
-            <div className="skeleton h-5 w-16 rounded-full" />
-            <div className="skeleton h-5 w-20 rounded-full" />
-            <div className="skeleton h-3 w-16 rounded" />
-          </div>
-        ))}
-      </div>
+    <div className="flex h-[50vh] items-center justify-center">
+      <div className="skeleton h-8 w-8 rounded-full" />
     </div>
   );
+}
+
+class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+  state = { hasError: false };
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex h-[50vh] flex-col items-center justify-center gap-3">
+          <p className="text-[13px] text-[var(--color-danger)]">Something went wrong.</p>
+          <button
+            className="text-[13px] underline"
+            onClick={() => this.setState({ hasError: false })}
+          >
+            Try again
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
 }
 
 export default function App() {
@@ -67,41 +49,51 @@ export default function App() {
         <Route
           path="/leads"
           element={
-            <Suspense fallback={<PageSkeleton />}>
-              <LeadTable />
-            </Suspense>
+            <ErrorBoundary>
+              <Suspense fallback={<PageSkeleton />}>
+                <LeadTable />
+              </Suspense>
+            </ErrorBoundary>
           }
         />
         <Route
           path="/campaigns"
           element={
-            <Suspense fallback={<PageSkeleton />}>
-              <CampaignList />
-            </Suspense>
+            <ErrorBoundary>
+              <Suspense fallback={<PageSkeleton />}>
+                <CampaignList />
+              </Suspense>
+            </ErrorBoundary>
           }
         />
         <Route
           path="/campaigns/new"
           element={
-            <Suspense fallback={<PageSkeleton />}>
-              <CampaignWizard />
-            </Suspense>
+            <ErrorBoundary>
+              <Suspense fallback={<PageSkeleton />}>
+                <CampaignBuilder />
+              </Suspense>
+            </ErrorBoundary>
           }
         />
         <Route
           path="/campaigns/:id/review"
           element={
-            <Suspense fallback={<PageSkeleton />}>
-              <EmailReviewQueue />
-            </Suspense>
+            <ErrorBoundary>
+              <Suspense fallback={<PageSkeleton />}>
+                <EmailReviewQueue />
+              </Suspense>
+            </ErrorBoundary>
           }
         />
         <Route
           path="/campaigns/:id/dashboard"
           element={
-            <Suspense fallback={<PageSkeleton />}>
-              <CampaignDashboard />
-            </Suspense>
+            <ErrorBoundary>
+              <Suspense fallback={<PageSkeleton />}>
+                <CampaignDashboard />
+              </Suspense>
+            </ErrorBoundary>
           }
         />
       </Route>

@@ -1,9 +1,8 @@
 import { useState, useCallback, useRef, memo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLeads, useImportCSV, useResearchAll } from "../hooks/useLeads";
-import Badge, { statusVariant } from "../components/ui/Badge";
 import Button from "../components/ui/Button";
-import Card from "../components/ui/Card";
+import Spinner from "../components/ui/Spinner";
 import ResearchPanel from "../components/leads/ResearchPanel";
 import {
   Upload,
@@ -12,7 +11,6 @@ import {
   ChevronUp,
   ChevronLeft,
   ChevronRight,
-  FlaskConical,
   Users,
   X,
   ArrowUpDown,
@@ -119,118 +117,137 @@ export default function LeadTable() {
   const totalCount = data?.total_count ?? 0;
 
   return (
-    <div>
+    <div className="mx-auto w-full max-w-7xl">
       {/* Header */}
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-[22px] font-bold tracking-tight">Leads</h1>
-          <p className="mt-1 text-[13px] text-[var(--color-ink-secondary)]">
-            {totalCount} total leads
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button
-            variant="secondary"
-            size="sm"
-            icon={<FlaskConical size={14} />}
-            loading={researchAll.isPending}
-            onClick={() => researchAll.mutate()}
-          >
-            Research All
-          </Button>
-          <Button
-            variant="primary"
-            size="sm"
-            icon={<Upload size={14} />}
-            onClick={() => setShowImportModal(true)}
-          >
-            Upload CSV
-          </Button>
-        </div>
+      <div className="mb-8">
+        <h2 className="mb-2 font-display-lg text-display-lg font-bold tracking-tight text-on-surface">Leads</h2>
+        <p className="font-body-lg text-body-lg text-on-surface-variant max-w-2xl">
+          Manage your outreach pipeline. Import contacts, verify emails, and initiate sequences.
+        </p>
       </div>
 
-      {/* Filters */}
-      <div className="mb-4 flex items-center gap-3">
-        <div className="relative flex-1">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-ink-muted)]" />
-          <input
-            type="text"
-            placeholder="Search by name, email, or company..."
-            value={search}
-            onChange={(e) => handleSearch(e.target.value)}
-            className="h-9 w-full rounded border border-white/[0.08] bg-[var(--color-surface-2)] pl-9 pr-3 text-[13px] text-[var(--color-ink-primary)] placeholder-[var(--color-ink-muted)] outline-none focus:border-[var(--color-accent)]/40"
-          />
+      {/* Actions & Filters Bar */}
+      <div className="mb-6 flex flex-col items-start justify-between gap-4 xl:flex-row xl:items-center">
+        <div className="flex w-full flex-wrap items-center gap-3 xl:w-auto">
+          {/* Search */}
+          <div className="relative w-full shrink-0 sm:w-[320px]">
+            <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant" />
+            <input
+              type="text"
+              placeholder="Search by name, email, or company..."
+              value={search}
+              onChange={(e) => handleSearch(e.target.value)}
+              className="w-full rounded-lg border border-outline/20 bg-surface-container-high py-2.5 pl-10 pr-4 font-body-md text-body-md text-on-surface transition-all placeholder:text-on-surface-variant/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+          </div>
+          {/* Status Filter */}
+          <div className="relative w-full shrink-0 sm:w-[160px]">
+            <select
+              value={statusFilter}
+              onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
+              className="w-full cursor-pointer appearance-none rounded-lg border border-outline/20 bg-surface-container-high py-2.5 pl-4 pr-10 font-body-md text-body-md text-on-surface transition-all focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+            >
+              <option value="">All Statuses</option>
+              <option value="new">New</option>
+              <option value="researched">Researched</option>
+              <option value="in_sequence">In Sequence</option>
+              <option value="completed">Completed</option>
+              <option value="bounced">Bounced</option>
+            </select>
+            <ChevronDown size={18} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant" />
+          </div>
+          {/* Research Filter */}
+          <div className="relative w-full shrink-0 sm:w-[160px]">
+            <select
+              value={researchFilter}
+              onChange={(e) => { setResearchFilter(e.target.value); setPage(1); }}
+              className="w-full cursor-pointer appearance-none rounded-lg border border-outline/20 bg-surface-container-high py-2.5 pl-4 pr-10 font-body-md text-body-md text-on-surface transition-all focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+            >
+              <option value="">All Research</option>
+              <option value="pending">Pending</option>
+              <option value="in_progress">In Progress</option>
+              <option value="completed">Completed</option>
+              <option value="failed">Failed</option>
+              <option value="needs_review">Needs Review</option>
+            </select>
+            <ChevronDown size={18} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant" />
+          </div>
         </div>
-        <select
-          value={statusFilter}
-          onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
-          className="h-9 rounded border border-white/[0.08] bg-[var(--color-surface-2)] px-3 text-[13px] text-[var(--color-ink-secondary)] outline-none"
-        >
-          <option value="">All Statuses</option>
-          <option value="new">New</option>
-          <option value="researched">Researched</option>
-          <option value="in_sequence">In Sequence</option>
-          <option value="completed">Completed</option>
-          <option value="bounced">Bounced</option>
-        </select>
-        <select
-          value={researchFilter}
-          onChange={(e) => { setResearchFilter(e.target.value); setPage(1); }}
-          className="h-9 rounded border border-white/[0.08] bg-[var(--color-surface-2)] px-3 text-[13px] text-[var(--color-ink-secondary)] outline-none"
-        >
-          <option value="">All Research</option>
-          <option value="pending">Pending</option>
-          <option value="in_progress">In Progress</option>
-          <option value="completed">Completed</option>
-          <option value="failed">Failed</option>
-          <option value="needs_review">Needs Review</option>
-        </select>
+        {/* Action Buttons */}
+        <div className="mt-4 flex w-full shrink-0 items-center justify-end gap-3 xl:mt-0 xl:w-auto">
+          <div className="text-sm text-on-surface-variant mr-2">{totalCount} total leads</div>
+          <button
+            onClick={() => researchAll.mutate()}
+            disabled={researchAll.isPending}
+            className="flex items-center gap-2 rounded-lg border border-outline/20 bg-surface-container-high px-5 py-2.5 font-label-md text-label-md text-on-surface transition-all duration-200 hover:bg-surface-container-highest active:scale-[0.98] disabled:opacity-50"
+          >
+            {researchAll.isPending ? <Spinner size={16} /> : <Search size={16} />}
+            Research All
+          </button>
+          <button
+            className="flex items-center gap-2 rounded-lg border border-outline/20 bg-surface-container-high px-5 py-2.5 font-label-md text-label-md text-on-surface transition-all duration-200 hover:bg-surface-container-highest active:scale-[0.98]"
+          >
+            <Upload size={16} className="rotate-180" />
+            Export
+          </button>
+          <button
+            onClick={() => setShowImportModal(true)}
+            className="flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 font-label-md text-label-md text-on-primary shadow-sm transition-all duration-200 hover:bg-primary-container hover:text-on-primary-container hover:shadow active:scale-[0.98]"
+          >
+            <Upload size={16} />
+            Upload CSV
+          </button>
+        </div>
       </div>
 
       {/* Table */}
       {leads.length === 0 ? (
-        <Card className="py-20 text-center">
-          <Users size={40} className="mx-auto mb-4 text-[var(--color-ink-muted)]" />
-          <p className="text-[15px] font-medium text-[var(--color-ink-secondary)]">No leads yet</p>
-          <p className="mt-1 text-[13px] text-[var(--color-ink-muted)]">
+        <div className="rounded-xl border border-outline/10 bg-surface-container/40 py-20 text-center shadow-sm backdrop-blur-sm">
+          <Users size={40} className="mx-auto mb-4 text-on-surface-variant opacity-60" />
+          <p className="font-body-lg text-body-lg font-medium text-on-surface">No leads yet</p>
+          <p className="mt-1 font-body-md text-body-md text-on-surface-variant">
             Upload a CSV to get started.
           </p>
-          <Button
-            variant="primary"
-            size="md"
-            icon={<Upload size={14} />}
+          <button
             onClick={() => setShowImportModal(true)}
-            className="mx-auto mt-5"
+            className="mx-auto mt-5 flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 font-label-md text-label-md text-on-primary shadow-sm transition-all duration-200 hover:bg-primary-container hover:text-on-primary-container"
           >
+            <Upload size={16} />
             Upload CSV
-          </Button>
-        </Card>
+          </button>
+        </div>
       ) : (
-        <Card>
+        <div className="overflow-hidden rounded-xl border border-outline/10 bg-surface-container/40 shadow-sm backdrop-blur-sm">
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full border-collapse text-left">
               <thead>
-                <tr className="border-b border-white/[0.06]">
+                <tr className="border-b border-outline/10 bg-surface-container-low/50">
+                  <th className="w-[48px] p-4">
+                    <div className="flex items-center justify-center">
+                      <input type="checkbox" className="h-4 w-4 cursor-pointer rounded border-outline/30 bg-surface-container-high text-primary focus:ring-primary focus:ring-offset-surface-container" />
+                    </div>
+                  </th>
                   {SORTABLE_COLUMNS.map((col) => (
                     <th
                       key={col}
                       onClick={() => handleSort(col)}
-                      className="cursor-pointer px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-[var(--color-ink-muted)] hover:text-[var(--color-ink-secondary)] select-none"
+                      className="group cursor-pointer select-none whitespace-nowrap px-4 py-3 font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant hover:text-on-surface"
                     >
                       <div className="flex items-center gap-1">
                         {COLUMN_LABELS[col]}
                         {sort === col ? (
                           order === "asc" ? (
-                            <ChevronUp size={11} className="text-[var(--color-accent)]" />
+                            <ChevronUp size={14} className="text-primary" />
                           ) : (
-                            <ChevronDown size={11} className="text-[var(--color-accent)]" />
+                            <ChevronDown size={14} className="text-primary" />
                           )
                         ) : (
-                          <ArrowUpDown size={10} className="opacity-0 group-hover:opacity-40" />
+                          <ArrowUpDown size={14} className="opacity-0 transition-opacity group-hover:opacity-100" />
                         )}
                       </div>
                     </th>
                   ))}
+                  <th className="w-[60px] px-4 py-3"></th>
                 </tr>
               </thead>
               <tbody>
@@ -247,40 +264,42 @@ export default function LeadTable() {
           </div>
 
           {/* Pagination */}
-          <div className="flex items-center justify-between border-t border-white/[0.06] px-4 py-3">
+          <div className="flex items-center justify-between border-t border-outline/10 bg-surface-container-low/30 px-4 py-3">
             <div className="flex items-center gap-2">
-              <span className="text-[12px] text-[var(--color-ink-muted)]">Rows:</span>
+              <span className="font-body-sm text-body-sm text-on-surface-variant">Rows per page:</span>
               <select
                 value={perPage}
                 onChange={(e) => { setPerPage(Number(e.target.value)); setPage(1); }}
-                className="rounded border border-white/[0.08] bg-[var(--color-surface-2)] px-2 py-1 text-[12px] text-[var(--color-ink-secondary)] outline-none"
+                className="cursor-pointer rounded border border-outline/20 bg-surface-container-high px-2 py-1 font-body-sm text-body-sm text-on-surface outline-none focus:border-primary"
               >
                 {PER_PAGE_OPTIONS.map((n) => (
                   <option key={n} value={n}>{n}</option>
                 ))}
               </select>
             </div>
-            <div className="flex items-center gap-1">
-              <span className="mr-3 text-[12px] text-[var(--color-ink-muted)]">
+            <div className="flex items-center gap-4">
+              <span className="font-body-sm text-body-sm text-on-surface-variant">
                 Page {page} of {totalPages}
               </span>
-              <button
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page === 1}
-                className="rounded p-1.5 text-[var(--color-ink-secondary)] hover:bg-white/[0.04] disabled:opacity-30"
-              >
-                <ChevronLeft size={14} />
-              </button>
-              <button
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={page === totalPages}
-                className="rounded p-1.5 text-[var(--color-ink-secondary)] hover:bg-white/[0.04] disabled:opacity-30"
-              >
-                <ChevronRight size={14} />
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                  className="rounded p-1 text-on-surface-variant transition-colors hover:bg-surface-container-high disabled:opacity-30"
+                >
+                  <ChevronLeft size={18} />
+                </button>
+                <button
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={page === totalPages}
+                  className="rounded p-1 text-on-surface-variant transition-colors hover:bg-surface-container-high disabled:opacity-30"
+                >
+                  <ChevronRight size={18} />
+                </button>
+              </div>
             </div>
           </div>
-        </Card>
+        </div>
       )}
 
       {/* CSV Import Modal */}
@@ -309,54 +328,72 @@ const LeadRow = memo(function LeadRow({
   return (
     <>
       <tr
-        onClick={onToggle}
-        className="table-row-hover relative cursor-pointer border-b border-white/[0.04] hover:bg-[var(--color-surface-hover)]/40"
+        className="group border-b border-outline/5 transition-colors hover:bg-surface-container-high/50"
       >
-        <td className="px-4 py-3 text-[13px] font-medium">
-          {lead.first_name} {lead.last_name}
+        <td className="w-[48px] p-4">
+          <div className="flex items-center justify-center">
+            <input type="checkbox" className="h-4 w-4 cursor-pointer rounded border-outline/30 bg-surface-container-high text-primary focus:ring-primary focus:ring-offset-surface-container" />
+          </div>
         </td>
-        <td className="px-4 py-3 font-mono text-[12px] text-[var(--color-ink-secondary)]">
+        <td className="px-4 py-3">
+          <div className="flex items-center gap-3">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-surface-container-highest text-on-surface-variant">
+              <span className="font-label-md text-label-md font-bold uppercase">{lead.first_name[0]}{lead.last_name[0]}</span>
+            </div>
+            <div>
+              <p className="font-body-md text-body-md font-medium text-on-surface">{lead.first_name} {lead.last_name}</p>
+            </div>
+          </div>
+        </td>
+        <td className="px-4 py-3 font-body-sm text-body-sm text-on-surface-variant">
           {lead.email}
         </td>
-        <td className="px-4 py-3 text-[13px] text-[var(--color-ink-secondary)]">
-          {lead.company_name ?? "—"}
+        <td className="px-4 py-3">
+          <p className="font-body-md text-body-md text-on-surface">{lead.company_name ?? "—"}</p>
         </td>
-        <td className="px-4 py-3 text-[13px] text-[var(--color-ink-secondary)]">
+        <td className="px-4 py-3 font-body-sm text-body-sm text-on-surface-variant">
           {lead.title ?? "—"}
         </td>
         <td className="px-4 py-3">
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-2">
             <div
-              className="h-1.5 w-1.5 shrink-0 rounded-full"
+              className="h-2 w-2 shrink-0 rounded-full"
               style={{ background: STATUS_DOTS[lead.status] ?? "#3d506e" }}
             />
-            <Badge variant={statusVariant(lead.status)}>{lead.status}</Badge>
+            <span className="font-label-sm text-label-sm capitalize text-on-surface-variant">
+              {lead.status.replace("_", " ")}
+            </span>
           </div>
         </td>
         <td className="px-4 py-3">
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-2">
             <div
-              className="h-1.5 w-1.5 shrink-0 rounded-full"
+              className="h-2 w-2 shrink-0 rounded-full"
               style={{ background: RESEARCH_DOTS[lead.research_status] ?? "#3d506e" }}
             />
-            <Badge variant={statusVariant(lead.research_status)}>
+            <span className="font-label-sm text-label-sm capitalize text-on-surface-variant">
               {lead.research_status.replace("_", " ")}
-            </Badge>
+            </span>
           </div>
         </td>
-        <td className="px-4 py-3 text-[12px] text-[var(--color-ink-muted)]">
+        <td className="px-4 py-3 font-body-sm text-body-sm text-on-surface-variant">
           {new Date(lead.created_at).toLocaleDateString()}
+        </td>
+        <td className="w-[60px] px-4 py-3 text-right">
+          <button onClick={onToggle} className="rounded p-1 text-on-surface-variant opacity-0 transition-all hover:bg-surface-container-highest hover:text-on-surface group-hover:opacity-100">
+             <ChevronDown size={18} className={`transition-transform duration-200 ${expanded ? "rotate-180" : ""}`} />
+          </button>
         </td>
       </tr>
       <AnimatePresence>
         {expanded && (
           <motion.tr
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 }}
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.2 }}
           >
-            <td colSpan={7} className="border-b border-white/[0.06] bg-[var(--color-surface-2)] px-6 py-5">
+            <td colSpan={9} className="border-b border-outline/10 bg-surface-container-low px-6 py-5 shadow-inner">
               <ResearchPanel
                 leadId={lead.id}
                 researchStatus={lead.research_status}

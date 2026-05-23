@@ -11,11 +11,9 @@ export default function AppLayout() {
   }
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen bg-background">
       <Sidebar />
-      <main className="ml-[200px] flex-1 px-8 py-8">
-        {/* No AnimatePresence mode="wait" — that caused a black void between routes.
-            Simple key-based fade keeps the old page visible until new one loads. */}
+      <main className="ml-[260px] flex-1 px-10 py-10">
         <AnimatePresence>
           <motion.div
             key={location.pathname}

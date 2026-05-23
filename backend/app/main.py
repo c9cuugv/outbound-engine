@@ -17,7 +17,7 @@ from app.api.v1.campaign_emails import router as campaign_emails_router
 from app.api.v1.tracking import router as tracking_router
 from app.api.v1.analytics import router as analytics_router
 from app.api.v1.websocket import router as websocket_router
-from app.api.v1.campaign_chat import router as campaign_chat_router
+from app.api.v1.demo import router as demo_router
 
 # ── Rate limiter ──
 limiter = Limiter(key_func=get_remote_address)
@@ -67,7 +67,7 @@ app.include_router(campaign_emails_router)
 app.include_router(tracking_router)
 app.include_router(analytics_router)
 app.include_router(websocket_router)
-app.include_router(campaign_chat_router)
+app.include_router(demo_router)
 
 
 @app.get("/", include_in_schema=False)
@@ -119,5 +119,6 @@ async def health():
     else:
         checks["nvidia"] = "configured"
 
-    overall = "ok" if all(v == "ok" for v in checks.values()) else "degraded"
+    has_error = any(v.startswith("error:") for v in checks.values())
+    overall = "ok" if not has_error else "degraded"
     return {"status": overall, **checks}
