@@ -76,6 +76,11 @@ export interface GeneratedEmail {
   created_at: string;
 }
 
+export interface CampaignEmailGroupsResponse {
+  emails: Record<string, GeneratedEmail[]>;
+  total: number;
+}
+
 export type EmailStatus =
   | "draft"
   | "approved"

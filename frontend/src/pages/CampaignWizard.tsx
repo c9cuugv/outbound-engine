@@ -1,7 +1,9 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCreateCampaign, useGenerateEmails, useTemplates } from "../hooks/useCampaigns";
+import api from "../api/client";
+import { fetchLists } from "../api/lists";
 import Button from "../components/ui/Button";
 import Card, { CardBody } from "../components/ui/Card";
 import Spinner from "../components/ui/Spinner";
@@ -85,8 +87,7 @@ export default function CampaignWizard() {
       // Poll until generation is done, then redirect
       const poll = setInterval(async () => {
         try {
-          const res = await fetch(`/api/v1/campaigns/${campaign.id}`);
-          const c = await res.json();
+          const { data: c } = await api.get(`/campaigns/${campaign.id}`);
           if (c.status === "review") {
             clearInterval(poll);
             navigate(`/campaigns/${campaign.id}/review`);
@@ -281,30 +282,84 @@ function SelectLeadsStep({
   data: CampaignWizardData;
   update: <K extends keyof CampaignWizardData>(key: K, val: CampaignWizardData[K]) => void;
 }) {
+  const [lists, setLists] = useState<import("../api/lists").LeadList[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchLists()
+      .then(setLists)
+      .catch(() => setLists([]))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const toggleList = (id: string) => {
+    const current = data.lead_list_ids;
+    const updated = current.includes(id)
+      ? current.filter((x) => x !== id)
+      : [...current, id];
+    update("lead_list_ids", updated);
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-10">
+        <Spinner />
+      </div>
+    );
+  }
+
   return (
     <div>
       <p className="mb-4 text-[13px] text-[var(--color-ink-secondary)]">
-        Select lead lists to include in this campaign.
+        Select one or more lead lists to include in this campaign.
       </p>
-      {/* Placeholder for lead list selection — requires Dev A's list API */}
-      <div className="rounded-lg border border-dashed border-white/[0.12] px-6 py-10 text-center">
-        <Users size={32} className="mx-auto mb-3 text-[var(--color-ink-muted)]" />
-        <p className="text-[13px] text-[var(--color-ink-secondary)]">
-          Lead list picker will connect to your imported leads.
-        </p>
-        <p className="mt-1 text-[12px] text-[var(--color-ink-muted)]">
-          {data.lead_list_ids.length} lists selected
-        </p>
-        {/* Temporary: allow proceeding for dev by adding a dummy ID */}
-        <Button
-          variant="secondary"
-          size="sm"
-          className="mt-4"
-          onClick={() => update("lead_list_ids", ["all"])}
-        >
-          Use All Leads
-        </Button>
-      </div>
+      {lists.length === 0 ? (
+        <div className="rounded-lg border border-dashed border-white/[0.12] px-6 py-10 text-center">
+          <Users size={32} className="mx-auto mb-3 text-[var(--color-ink-muted)]" />
+          <p className="text-[13px] text-[var(--color-ink-secondary)]">
+            No lead lists found. Import leads and create a list first.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {lists.map((list) => {
+            const selected = data.lead_list_ids.includes(list.id);
+            return (
+              <button
+                key={list.id}
+                onClick={() => toggleList(list.id)}
+                className={`flex w-full items-center justify-between rounded-xl border-2 px-4 py-3 text-left transition-all ${
+                  selected
+                    ? "border-[var(--color-accent)] bg-[var(--color-accent-dim)]"
+                    : "border-white/[0.08] bg-[var(--color-surface-2)] hover:border-white/[0.15]"
+                }`}
+              >
+                <div>
+                  <p className="text-[13px] font-semibold text-[var(--color-ink-primary)]">
+                    {list.name}
+                  </p>
+                  {list.description && (
+                    <p className="text-[12px] text-[var(--color-ink-muted)]">{list.description}</p>
+                  )}
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="font-mono text-[12px] text-[var(--color-ink-muted)]">
+                    {list.member_count} leads
+                  </span>
+                  {selected && (
+                    <div className="flex h-5 w-5 items-center justify-center rounded-full bg-[var(--color-accent)]">
+                      <Check size={12} className="text-[var(--color-surface-0)]" />
+                    </div>
+                  )}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      )}
+      <p className="mt-3 text-[12px] text-[var(--color-ink-muted)]">
+        {data.lead_list_ids.length} list{data.lead_list_ids.length !== 1 ? "s" : ""} selected
+      </p>
     </div>
   );
 }

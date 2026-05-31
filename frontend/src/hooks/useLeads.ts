@@ -7,6 +7,7 @@ export function useLeads(params: LeadQueryParams) {
     queryKey: ["leads", params],
     queryFn: () => fetchLeads(params),
     staleTime: 30_000,
+    refetchInterval: 5000, // Poll every 5s per PRD
   });
 }
 

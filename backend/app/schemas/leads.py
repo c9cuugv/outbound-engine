@@ -1,13 +1,14 @@
 import uuid
 from datetime import datetime
+from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr, Field
 
 
 class LeadCreate(BaseModel):
-    first_name: str = Field(..., max_length=100)
-    last_name: str = Field(..., max_length=100)
-    email: str = Field(..., max_length=255)
+    first_name: str = Field(..., min_length=1, max_length=100)
+    last_name: str = Field(..., min_length=1, max_length=100)
+    email: EmailStr = Field(..., max_length=255)
     company_name: str | None = Field(None, max_length=255)
     company_domain: str | None = Field(None, max_length=255)
     title: str | None = Field(None, max_length=255)
@@ -18,14 +19,14 @@ class LeadCreate(BaseModel):
 
 
 class LeadUpdate(BaseModel):
-    first_name: str | None = Field(None, max_length=100)
-    last_name: str | None = Field(None, max_length=100)
-    email: str | None = Field(None, max_length=255)
+    first_name: str | None = Field(None, min_length=1, max_length=100)
+    last_name: str | None = Field(None, min_length=1, max_length=100)
+    email: EmailStr | None = None
     company_name: str | None = Field(None, max_length=255)
     company_domain: str | None = Field(None, max_length=255)
     title: str | None = Field(None, max_length=255)
     linkedin_url: str | None = Field(None, max_length=500)
-    status: str | None = Field(None, max_length=20)
+    status: Literal["new", "contacted", "replied", "bounced", "unsubscribed"] | None = None
     tags: list[str] | None = None
     custom_fields: dict | None = None
 
@@ -49,8 +50,8 @@ class LeadResponse(BaseModel):
     status: str
     research_status: str
     research_completed_at: datetime | None = None
-    tags: list = []
-    custom_fields: dict = {}
+    tags: list = Field(default_factory=list)
+    custom_fields: dict = Field(default_factory=dict)
     source: str | None = None
     created_at: datetime
     updated_at: datetime

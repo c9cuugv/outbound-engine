@@ -17,7 +17,7 @@ import {
   X,
   ArrowUpDown,
 } from "lucide-react";
-import type { Lead, ResearchStatus } from "../types/lead";
+import type { Lead } from "../types/lead";
 
 /* ── Status dot colors ── */
 const STATUS_DOTS: Record<string, string> = {
@@ -267,6 +267,7 @@ export default function LeadTable() {
               <button
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page === 1}
+                aria-label="Previous Page"
                 className="rounded p-1.5 text-[var(--color-ink-secondary)] hover:bg-white/[0.04] disabled:opacity-30"
               >
                 <ChevronLeft size={14} />
@@ -274,6 +275,7 @@ export default function LeadTable() {
               <button
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={page === totalPages}
+                aria-label="Next Page"
                 className="rounded p-1.5 text-[var(--color-ink-secondary)] hover:bg-white/[0.04] disabled:opacity-30"
               >
                 <ChevronRight size={14} />
@@ -435,7 +437,7 @@ function CSVImportModal({
       <div className="w-full max-w-md rounded-lg border border-white/[0.08] bg-[var(--color-surface-1)] p-6 shadow-2xl">
         <div className="mb-5 flex items-center justify-between">
           <h2 className="text-[16px] font-semibold">Upload CSV</h2>
-          <button onClick={onClose} className="text-[var(--color-ink-muted)] hover:text-[var(--color-ink-primary)]">
+          <button aria-label="Close" onClick={onClose} className="text-[var(--color-ink-muted)] hover:text-[var(--color-ink-primary)]">
             <X size={18} />
           </button>
         </div>

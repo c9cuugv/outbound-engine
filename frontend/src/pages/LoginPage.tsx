@@ -1,7 +1,7 @@
 import { useState, FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { Zap, AlertCircle, Loader2 } from "lucide-react";
-import api from "../api/client";
+import api, { setTokens } from "../api/client";
 
 type Mode = "login" | "register";
 
@@ -22,12 +22,10 @@ export default function LoginPage() {
     try {
       if (mode === "login") {
         const { data } = await api.post("/auth/login", { email, password });
-        localStorage.setItem("access_token", data.access_token);
-        if (data.refresh_token) localStorage.setItem("refresh_token", data.refresh_token);
+        setTokens(data.access_token, data.refresh_token ?? "");
       } else {
         const { data } = await api.post("/auth/register", { email, password, name });
-        localStorage.setItem("access_token", data.access_token);
-        if (data.refresh_token) localStorage.setItem("refresh_token", data.refresh_token);
+        setTokens(data.access_token, data.refresh_token ?? "");
       }
       navigate("/leads", { replace: true });
     } catch (err: unknown) {
@@ -81,10 +79,11 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             {mode === "register" && (
               <div>
-                <label className="mb-1.5 block text-[12px] font-medium text-[var(--color-ink-secondary)]">
+                <label htmlFor="fullName" className="mb-1.5 block text-[12px] font-medium text-[var(--color-ink-secondary)]">
                   Full Name
                 </label>
                 <input
+                  id="fullName"
                   type="text"
                   required
                   autoComplete="name"
@@ -97,10 +96,11 @@ export default function LoginPage() {
             )}
 
             <div>
-              <label className="mb-1.5 block text-[12px] font-medium text-[var(--color-ink-secondary)]">
+              <label htmlFor="email" className="mb-1.5 block text-[12px] font-medium text-[var(--color-ink-secondary)]">
                 Email
               </label>
               <input
+                id="email"
                 type="email"
                 required
                 autoComplete="email"
@@ -112,10 +112,11 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <label className="mb-1.5 block text-[12px] font-medium text-[var(--color-ink-secondary)]">
+              <label htmlFor="password" className="mb-1.5 block text-[12px] font-medium text-[var(--color-ink-secondary)]">
                 Password
               </label>
               <input
+                id="password"
                 type="password"
                 required
                 autoComplete={mode === "login" ? "current-password" : "new-password"}

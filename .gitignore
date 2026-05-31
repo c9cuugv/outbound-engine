@@ -38,6 +38,28 @@ Thumbs.db
 *.swp
 *.swo
 
-# Logs
+# Logs & QA screenshots
 *.log
 logs/
+logs/*.png
+logs/*.jpg
+logs/*.jpeg
+
+#planning
+.gemini/
+.superpowers/
+.planning/
+.playwright-mcp/
+.vscode/
+.playwright-mcp/
+
+#Report
+council-report-20260519.html
+council-transcript-20260519.md
+security-council-report-summary.md
+security-audit-report.md
+
+
+#DOCS
+NOT_WORKING.md
+

@@ -3,16 +3,23 @@ import {
   fetchCampaigns,
   fetchCampaign,
   createCampaign,
-  generateEmails,
   fetchCampaignEmails,
   approveEmail,
   updateEmail,
-  regenerateEmail,
   approveAllEmails,
   launchCampaign,
+  pauseCampaign,
+  resumeCampaign,
   fetchTemplates,
+  regenerateEmail,
+  generateCampaignEmails,
 } from "../api/campaigns";
 import type { CampaignWizardData } from "../types/campaign";
+
+function invalidateCampaignQueries(qc: ReturnType<typeof useQueryClient>, campaignId: string) {
+  qc.invalidateQueries({ queryKey: ["campaign", campaignId] });
+  qc.invalidateQueries({ queryKey: ["campaigns"] });
+}
 
 export function useCampaigns() {
   return useQuery({
@@ -54,10 +61,6 @@ export function useCreateCampaign() {
   });
 }
 
-export function useGenerateEmails() {
-  return useMutation({ mutationFn: generateEmails });
-}
-
 export function useApproveEmail(campaignId: string) {
   const qc = useQueryClient();
   return useMutation({
@@ -75,14 +78,6 @@ export function useUpdateEmail(campaignId: string) {
   });
 }
 
-export function useRegenerateEmail(campaignId: string) {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (emailId: string) => regenerateEmail(campaignId, emailId),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["campaign-emails", campaignId] }),
-  });
-}
-
 export function useApproveAllEmails(campaignId: string) {
   const qc = useQueryClient();
   return useMutation({
@@ -91,11 +86,42 @@ export function useApproveAllEmails(campaignId: string) {
   });
 }
 
+export function useRegenerateEmail(campaignId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (emailId: string) => regenerateEmail(campaignId, emailId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["campaign-emails", campaignId] }),
+  });
+}
+
+export function useGenerateEmails() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (campaignId: string) => generateCampaignEmails(campaignId),
+    onSuccess: (_data, campaignId) => qc.invalidateQueries({ queryKey: ["campaign", campaignId] }),
+  });
+}
+
 export function useLaunchCampaign() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: launchCampaign,
-    onSuccess: (_data, campaignId) =>
-      qc.invalidateQueries({ queryKey: ["campaign", campaignId] }),
+    onSuccess: (_data, campaignId) => invalidateCampaignQueries(qc, campaignId),
+  });
+}
+
+export function usePauseCampaign() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: pauseCampaign,
+    onSuccess: (_data, campaignId) => invalidateCampaignQueries(qc, campaignId),
+  });
+}
+
+export function useResumeCampaign() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: resumeCampaign,
+    onSuccess: (_data, campaignId) => invalidateCampaignQueries(qc, campaignId),
   });
 }

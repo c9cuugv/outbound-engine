@@ -24,6 +24,8 @@ from app.ai.providers import (
     ClaudeCodeProvider,
     GeminiProvider,
     GroqProvider,
+    NvidiaProvider,
+    StubProvider,
 )
 
 logger = logging.getLogger(__name__)
@@ -32,8 +34,10 @@ logger = logging.getLogger(__name__)
 _PROVIDER_REGISTRY: dict[str, tuple[type[AIProvider], str | None]] = {
     "gemini": (GeminiProvider, "GEMINI_API_KEY"),
     "groq": (GroqProvider, "GROQ_API_KEY"),
-    "claude_code": (ClaudeCodeProvider, None),  # No API key needed
+    "claude_code": (ClaudeCodeProvider, None),
     "anthropic_api": (AnthropicAPIProvider, "ANTHROPIC_API_KEY"),
+    "nvidia": (NvidiaProvider, "NVIDIA_API_KEY"),
+    "stub": (StubProvider, None),  # Zero-config for demos
 }
 
 DEFAULT_PROVIDER = "gemini"
@@ -78,6 +82,10 @@ def get_provider(task: str) -> AIProvider:
         logger.info(
             "Creating %s provider for task '%s'", provider_name, task
         )
+        # NVIDIA allows overriding the model via NVIDIA_MODEL env var
+        if provider_name == "nvidia":
+            model = os.environ.get("NVIDIA_MODEL")
+            return provider_class(api_key=api_key, model=model or None)
         return provider_class(api_key=api_key)
 
     # Providers without API key (e.g., ClaudeCodeProvider)

@@ -6,12 +6,13 @@ from sqlalchemy import select, func, cast, Date
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.auth import get_current_user
+from app.api.v1.deps import get_or_404
 from app.database import get_db
 from app.models.user import User
-from app.models.campaign import Campaign
 from app.models.generated_email import GeneratedEmail
 from app.models.tracking_event import TrackingEvent
 from app.models.reply import Reply
+from app.services.campaign_service import get_campaign_by_id
 
 router = APIRouter(prefix="/api/v1/campaigns", tags=["analytics"])
 
@@ -23,7 +24,7 @@ async def get_campaign_analytics(
     current_user: User = Depends(get_current_user),
 ):
     """Get comprehensive campaign analytics: overview, by_step, by_day, top_subjects, sentiment."""
-    campaign = await _get_campaign(db, campaign_id, current_user.id)
+    campaign = await get_or_404(get_campaign_by_id, db, campaign_id, current_user.id, detail="Campaign not found")
 
     # ── Overview ──
     emails_sent = campaign.emails_sent or 0
@@ -70,6 +71,8 @@ async def get_campaign_analytics(
             cast(GeneratedEmail.sent_at, Date).label("date"),
             func.count().label("sent"),
             func.count().filter(GeneratedEmail.opened_at.isnot(None)).label("opened"),
+            func.count().filter(GeneratedEmail.clicked_at.isnot(None)).label("clicked"),
+            func.count().filter(GeneratedEmail.replied_at.isnot(None)).label("replied"),
         )
         .where(
             GeneratedEmail.campaign_id == campaign_id,
@@ -79,7 +82,13 @@ async def get_campaign_analytics(
         .order_by(cast(GeneratedEmail.sent_at, Date))
     )
     by_day = [
-        {"date": str(row.date), "sent": row.sent, "opened": row.opened}
+        {
+            "date": str(row.date),
+            "sent": row.sent,
+            "opened": row.opened,
+            "clicked": row.clicked,
+            "replied": row.replied,
+        }
         for row in day_result.all()
     ]
 
@@ -139,7 +148,7 @@ async def get_lead_timeline(
 ):
     """Get chronological event timeline for a single lead within a campaign."""
     # Ownership check — 404 if campaign does not belong to current user
-    await _get_campaign(db, campaign_id, current_user.id)
+    await get_or_404(get_campaign_by_id, db, campaign_id, current_user.id, detail="Campaign not found")
 
     # Get all emails for this lead in the campaign
     emails_result = await db.execute(
@@ -204,15 +213,3 @@ async def get_lead_timeline(
     timeline.sort(key=lambda x: x["timestamp"])
 
     return {"lead_id": str(lead_id), "campaign_id": str(campaign_id), "timeline": timeline}
-
-
-async def _get_campaign(
-    db: AsyncSession, campaign_id: uuid.UUID, owner_id: uuid.UUID
-) -> Campaign:
-    result = await db.execute(
-        select(Campaign).where(Campaign.id == campaign_id, Campaign.owner_id == owner_id)
-    )
-    campaign = result.scalar_one_or_none()
-    if not campaign:
-        raise HTTPException(status_code=404, detail="Campaign not found")
-    return campaign

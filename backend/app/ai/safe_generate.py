@@ -44,6 +44,9 @@ def _extract_json(raw: str) -> dict:
       - ``` ... ```
       - JSON embedded in prose (finds first { ... } block)
     """
+    if raw is None:
+        raise json.JSONDecodeError("LLM returned no content (content was None)", "", 0)
+
     cleaned = raw.strip()
 
     # Strip markdown code fences
@@ -184,3 +187,5 @@ async def safe_generate(
         f"Failed to generate valid {output_schema.__name__} "
         f"after {max_retries} attempts. Last error: {last_error}"
     )
+/bin/bash: line 4: /Volumes/APPLE: Operation not permitted
+/bin/bash: line 5: /Volumes/APPLE: Operation not permitted

@@ -100,8 +100,7 @@ async def get_leads_paginated(
 async def update_lead(db: AsyncSession, lead: Lead, data: dict) -> Lead:
     """Partial update: only set provided fields."""
     for key, value in data.items():
-        if value is not None:
-            setattr(lead, key, value)
+        setattr(lead, key, value)
     await db.commit()
     await db.refresh(lead)
     return lead

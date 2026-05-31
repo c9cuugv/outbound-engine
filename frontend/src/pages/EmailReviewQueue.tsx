@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   useCampaign,
@@ -9,7 +9,6 @@ import {
   useApproveAllEmails,
   useLaunchCampaign,
 } from "../hooks/useCampaigns";
-import { useLeadResearch } from "../hooks/useLeads";
 import Badge, { statusVariant } from "../components/ui/Badge";
 import Button from "../components/ui/Button";
 import Card, { CardHeader, CardBody } from "../components/ui/Card";
@@ -46,11 +45,13 @@ export default function EmailReviewQueue() {
   if (campaignLoading || emailsLoading) return <FullPageSpinner label="Loading review queue..." />;
   if (!campaign || !emails) return null;
 
-  // Group emails by lead
-  const grouped = groupByLead(emails);
-  const draftCount = emails.filter((e) => e.status === "draft").length;
-  const approvedCount = emails.filter((e) => e.status === "approved").length;
-  const failedCount = emails.filter((e) => e.status === "failed").length;
+  // Backend returns { emails: { [lead_id]: GeneratedEmail[] }, total: number }
+  // "grouped" is the lead-keyed dict directly; flatten to a list for stats
+  const grouped: Record<string, GeneratedEmail[]> = (emails as any).emails ?? {};
+  const allEmails: GeneratedEmail[] = Object.values(grouped).flat();
+  const draftCount = allEmails.filter((e) => e.status === "draft").length;
+  const approvedCount = allEmails.filter((e) => e.status === "approved").length;
+  const failedCount = allEmails.filter((e) => e.status === "failed").length;
 
   const handleLaunch = async () => {
     await launchCampaign.mutateAsync(campaignId!);
@@ -128,6 +129,7 @@ export default function EmailReviewQueue() {
                 <span className="text-[13px] font-semibold">Research Data</span>
               </div>
               <button
+                aria-label="Close"
                 onClick={() => setResearchLeadId(null)}
                 className="text-[var(--color-ink-muted)] hover:text-[var(--color-ink-primary)]"
               >
@@ -163,7 +165,7 @@ function StatCard({ label, count, variant }: { label: string; count: number; var
 function LeadEmailGroup({
   leadId,
   emails,
-  campaignId,
+  campaignId: _campaignId,
   onApprove,
   onRegenerate,
   onUpdate,
@@ -305,12 +307,3 @@ function EmailCard({
   );
 }
 
-/* ── Helpers ── */
-function groupByLead(emails: GeneratedEmail[]): Record<string, GeneratedEmail[]> {
-  const groups: Record<string, GeneratedEmail[]> = {};
-  for (const email of emails) {
-    if (!groups[email.lead_id]) groups[email.lead_id] = [];
-    groups[email.lead_id]!.push(email);
-  }
-  return groups;
-}

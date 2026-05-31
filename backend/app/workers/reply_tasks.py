@@ -13,6 +13,9 @@ from app.models.generated_email import GeneratedEmail
 from app.models.lead import Lead
 from app.models.reply import Reply
 from app.workers.send_tasks import cancel_remaining_sequence
+from app.ai.factory import get_provider
+from app.ai.safe_generate import safe_generate
+from app.ai.schemas import SentimentOutput
 
 from sqlalchemy import select
 
@@ -92,33 +95,40 @@ async def _process_reply(msg):
         body = msg.get_payload(decode=True).decode("utf-8", errors="replace")
 
     async with async_session() as db:
-        # Try to match by In-Reply-To header or subject
+        # Try to match by In-Reply-To header or sender address
         matched_email = None
 
         if in_reply_to:
-            # Check if in_reply_to contains a message-id we sent
-            result = await db.execute(
-                select(GeneratedEmail).where(
-                    GeneratedEmail.status == "sent"
-                )
+            # Extract UUID from In-Reply-To and do a direct indexed lookup
+            import re as _re
+            uuid_match = _re.search(
+                r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}",
+                in_reply_to,
+                _re.IGNORECASE,
             )
-            for sent_email in result.scalars().all():
-                if str(sent_email.id) in in_reply_to:
-                    matched_email = sent_email
-                    break
+            if uuid_match:
+                try:
+                    candidate_id = uuid.UUID(uuid_match.group())
+                    result = await db.execute(
+                        select(GeneratedEmail).where(
+                            GeneratedEmail.id == candidate_id,
+                            GeneratedEmail.status == "sent",
+                        )
+                    )
+                    matched_email = result.scalar_one_or_none()
+                except ValueError:
+                    pass
 
-        if not matched_email and subject:
-            # Fallback: match by subject (remove Re:/Fwd: and compare)
-            clean_subject = subject.lower().replace("re:", "").replace("fwd:", "").strip()
+        if not matched_email:
+            # Fallback: match by recipient email address (indexed O(1) lookup)
+            reply_from_address = from_email.split("<")[-1].rstrip(">").strip() if "<" in from_email else from_email.strip()
             result = await db.execute(
                 select(GeneratedEmail).where(
-                    GeneratedEmail.status == "sent"
-                )
+                    GeneratedEmail.recipient_email == reply_from_address,
+                    GeneratedEmail.status == "sent",
+                ).limit(1)
             )
-            for sent_email in result.scalars().all():
-                if sent_email.subject and clean_subject in sent_email.subject.lower():
-                    matched_email = sent_email
-                    break
+            matched_email = result.scalar_one_or_none()
 
         if not matched_email:
             return  # Not a reply to any campaign email
@@ -149,10 +159,24 @@ async def _process_reply(msg):
         if campaign:
             campaign.emails_replied += 1
 
-        # 5. Classify sentiment
-        # TODO: Use Developer B's safe_generate + SentimentOutput for AI classification
+        # 5. Classify sentiment via AI
         sentiment = "unknown"
         confidence = 0.0
+        try:
+            sentiment_provider = get_provider("sentiment")
+            sentiment_result = await safe_generate(
+                provider=sentiment_provider,
+                system_prompt=(
+                    "You are an email reply sentiment classifier. "
+                    "Classify the reply into one of the allowed categories."
+                ),
+                user_prompt=f"Classify the sentiment of this email reply:\n\n{body[:2000]}",
+                output_schema=SentimentOutput,
+            )
+            sentiment = sentiment_result.sentiment
+            confidence = sentiment_result.confidence
+        except Exception as _e:
+            logger.warning(f"Sentiment classification failed: {_e}")
 
         # 6. Store reply
         reply = Reply(
