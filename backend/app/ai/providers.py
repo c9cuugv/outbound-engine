@@ -197,7 +197,10 @@ class NvidiaProvider(AIProvider):
             temperature=0.7,
             max_tokens=1000,
         )
-        return response.choices[0].message.content
+        msg = response.choices[0].message
+        # Some reasoning models (e.g. stepfun-ai/step-3.5-flash) put output
+        # in reasoning_content instead of content.
+        return msg.content or getattr(msg, "reasoning_content", None) or ""
 
 
 class StubProvider(AIProvider):
