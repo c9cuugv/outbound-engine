@@ -1,10 +1,11 @@
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.auth import get_current_user
+from app.api.v1.deps import get_or_404
 from app.database import get_db
 from app.models.user import User
 from app.schemas.campaigns import (
@@ -34,10 +35,12 @@ async def create_campaign_endpoint(
 
 @router.get("/campaigns", response_model=list[CampaignResponse])
 async def list_campaigns(
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    return await get_campaigns(db, owner_id=current_user.id)
+    return await get_campaigns(db, owner_id=current_user.id, limit=limit, offset=offset)
 
 
 @router.get("/campaigns/{campaign_id}", response_model=CampaignResponse)
@@ -46,10 +49,7 @@ async def get_campaign(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    campaign = await get_campaign_by_id(db, campaign_id, owner_id=current_user.id)
-    if not campaign:
-        raise HTTPException(status_code=404, detail="Campaign not found")
-    return campaign
+    return await get_or_404(get_campaign_by_id, db, campaign_id, current_user.id, detail="Campaign not found")
 
 
 @router.patch("/campaigns/{campaign_id}", response_model=CampaignResponse)
@@ -59,9 +59,7 @@ async def update_campaign_endpoint(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    campaign = await get_campaign_by_id(db, campaign_id, owner_id=current_user.id)
-    if not campaign:
-        raise HTTPException(status_code=404, detail="Campaign not found")
+    campaign = await get_or_404(get_campaign_by_id, db, campaign_id, current_user.id, detail="Campaign not found")
     if campaign.status == "active":
         raise HTTPException(status_code=400, detail="Cannot update an active campaign")
 
@@ -72,20 +70,21 @@ async def update_campaign_endpoint(
     return await update_campaign(db, campaign, update_data)
 
 
-@router.post("/campaigns/{campaign_id}/generate", response_model=CampaignResponse)
-async def generate_campaign_emails_endpoint(
+@router.post("/campaigns/{campaign_id}/generate", status_code=status.HTTP_202_ACCEPTED)
+async def generate_campaign(
     campaign_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Trigger email generation for a campaign. Dispatches background task and sets status to 'generating'."""
-    campaign = await get_campaign_by_id(db, campaign_id, owner_id=current_user.id)
-    if not campaign:
-        raise HTTPException(status_code=404, detail="Campaign not found")
-
-    campaign = await update_campaign(db, campaign, {"status": "generating"})
-    generate_campaign_emails.delay(str(campaign_id))
-    return campaign
+    """Trigger the background task to generate emails for all eligible leads."""
+    campaign = await get_or_404(get_campaign_by_id, db, campaign_id, current_user.id, detail="Campaign not found")
+    
+    # Update status to generating
+    await update_campaign(db, campaign, {"status": "generating"})
+    
+    # Trigger Celery task
+    generate_campaign_emails.delay(str(campaign.id))
+    return {"status": "accepted", "message": "Email generation queued"}
 
 
 @router.post("/campaigns/{campaign_id}/launch", response_model=CampaignResponse)
@@ -95,10 +94,7 @@ async def launch_campaign(
     current_user: User = Depends(get_current_user),
 ):
     """Set campaign status to 'active' and record launched_at timestamp."""
-    campaign = await get_campaign_by_id(db, campaign_id, owner_id=current_user.id)
-    if not campaign:
-        raise HTTPException(status_code=404, detail="Campaign not found")
-
+    campaign = await get_or_404(get_campaign_by_id, db, campaign_id, current_user.id, detail="Campaign not found")
     return await update_campaign(db, campaign, {
         "status": "active",
         "launched_at": datetime.now(timezone.utc),
@@ -112,10 +108,7 @@ async def pause_campaign(
     current_user: User = Depends(get_current_user),
 ):
     """Set campaign status to 'paused'."""
-    campaign = await get_campaign_by_id(db, campaign_id, owner_id=current_user.id)
-    if not campaign:
-        raise HTTPException(status_code=404, detail="Campaign not found")
-
+    campaign = await get_or_404(get_campaign_by_id, db, campaign_id, current_user.id, detail="Campaign not found")
     return await update_campaign(db, campaign, {"status": "paused"})
 
 
@@ -126,10 +119,7 @@ async def resume_campaign(
     current_user: User = Depends(get_current_user),
 ):
     """Set campaign status back to 'active'."""
-    campaign = await get_campaign_by_id(db, campaign_id, owner_id=current_user.id)
-    if not campaign:
-        raise HTTPException(status_code=404, detail="Campaign not found")
-
+    campaign = await get_or_404(get_campaign_by_id, db, campaign_id, current_user.id, detail="Campaign not found")
     return await update_campaign(db, campaign, {"status": "active"})
 
 
@@ -141,15 +131,17 @@ async def create_template_endpoint(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    return await create_template(db, data.model_dump(), owner_id=current_user.id)
+    return await create_template(db, {**data.model_dump(), "owner_id": current_user.id})
 
 
 @router.get("/templates", response_model=list[TemplateResponse])
 async def list_templates(
+    limit: int = Query(100, ge=1, le=500),
+    offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    return await get_templates(db, owner_id=current_user.id)
+    return await get_templates(db, owner_id=current_user.id, limit=limit, offset=offset)
 
 
 @router.get("/templates/{template_id}", response_model=TemplateResponse)
@@ -158,10 +150,7 @@ async def get_template(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    template = await get_template_by_id(db, template_id)
-    if not template:
-        raise HTTPException(status_code=404, detail="Template not found")
-    return template
+    return await get_or_404(get_template_by_id, db, template_id, detail="Template not found")
 
 
 @router.patch("/templates/{template_id}", response_model=TemplateResponse)
@@ -171,9 +160,6 @@ async def update_template_endpoint(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    template = await get_template_by_id(db, template_id)
-    if not template:
-        raise HTTPException(status_code=404, detail="Template not found")
-
+    template = await get_or_404(get_template_by_id, db, template_id, detail="Template not found")
     update_data = data.model_dump(exclude_unset=True)
     return await update_template(db, template, update_data)

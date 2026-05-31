@@ -83,6 +83,46 @@ class TestCreateCampaign:
         resp = await client.post("/api/v1/campaigns", json=CAMPAIGN_PAYLOAD)
         assert resp.status_code == 401
 
+    async def test_create_campaign_invalid_sender_email_returns_422(
+        self, client: AsyncClient, auth_headers: dict
+    ):
+        resp = await client.post(
+            "/api/v1/campaigns",
+            json={**CAMPAIGN_PAYLOAD, "sender_email": "notanemail", "name": "Bad Email"},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 422
+
+    async def test_create_campaign_invalid_reply_to_email_returns_422(
+        self, client: AsyncClient, auth_headers: dict
+    ):
+        resp = await client.post(
+            "/api/v1/campaigns",
+            json={**CAMPAIGN_PAYLOAD, "reply_to_email": "also-bad", "name": "Bad Reply"},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 422
+
+    async def test_create_campaign_zero_max_emails_per_day_returns_422(
+        self, client: AsyncClient, auth_headers: dict
+    ):
+        resp = await client.post(
+            "/api/v1/campaigns",
+            json={**CAMPAIGN_PAYLOAD, "max_emails_per_day": 0, "name": "Zero Rate"},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 422
+
+    async def test_create_campaign_negative_max_emails_per_day_returns_422(
+        self, client: AsyncClient, auth_headers: dict
+    ):
+        resp = await client.post(
+            "/api/v1/campaigns",
+            json={**CAMPAIGN_PAYLOAD, "max_emails_per_day": -5, "name": "Negative Rate"},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 422
+
 
 # ---------------------------------------------------------------------------
 # List campaigns
@@ -198,6 +238,55 @@ class TestUpdateCampaign:
             headers=auth_headers,
         )
         assert resp.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# Campaign lifecycle
+# ---------------------------------------------------------------------------
+
+class TestCampaignLifecycle:
+    async def test_launch_campaign_sets_active_status_and_timestamp(
+        self, client: AsyncClient, auth_headers: dict
+    ):
+        campaign = await create_campaign(client, auth_headers)
+
+        resp = await client.post(
+            f"/api/v1/campaigns/{campaign['id']}/launch",
+            headers=auth_headers,
+        )
+
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "active"
+        assert resp.json()["launched_at"] is not None
+
+    async def test_pause_campaign_sets_paused_status(
+        self, client: AsyncClient, auth_headers: dict
+    ):
+        campaign = await create_campaign(client, auth_headers)
+        await client.post(f"/api/v1/campaigns/{campaign['id']}/launch", headers=auth_headers)
+
+        resp = await client.post(
+            f"/api/v1/campaigns/{campaign['id']}/pause",
+            headers=auth_headers,
+        )
+
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "paused"
+
+    async def test_resume_campaign_sets_active_status(
+        self, client: AsyncClient, auth_headers: dict
+    ):
+        campaign = await create_campaign(client, auth_headers)
+        await client.post(f"/api/v1/campaigns/{campaign['id']}/launch", headers=auth_headers)
+        await client.post(f"/api/v1/campaigns/{campaign['id']}/pause", headers=auth_headers)
+
+        resp = await client.post(
+            f"/api/v1/campaigns/{campaign['id']}/resume",
+            headers=auth_headers,
+        )
+
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "active"
 
 
 # ---------------------------------------------------------------------------

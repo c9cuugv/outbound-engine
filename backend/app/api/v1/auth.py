@@ -5,6 +5,7 @@ from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError
 from slowapi import Limiter
 from slowapi.util import get_remote_address
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -27,6 +28,13 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 limiter = Limiter(key_func=get_remote_address)
 
 
+def _raise_database_unavailable(exc: Exception) -> None:
+    raise HTTPException(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        detail="Database unavailable. Start PostgreSQL and rerun setup.",
+    ) from exc
+
+
 async def get_current_user(
     token: str = Depends(oauth2_scheme),
     db: AsyncSession = Depends(get_db),
@@ -46,7 +54,10 @@ async def get_current_user(
     except JWTError:
         raise credentials_exception
 
-    user = await get_user_by_id(db, uuid.UUID(user_id))
+    try:
+        user = await get_user_by_id(db, uuid.UUID(user_id))
+    except (ConnectionRefusedError, OSError, SQLAlchemyError) as exc:
+        _raise_database_unavailable(exc)
     if user is None:
         raise credentials_exception
     return user
@@ -56,14 +67,20 @@ async def get_current_user(
 @limiter.limit("10/minute")
 async def register(request: Request, data: RegisterRequest, db: AsyncSession = Depends(get_db)):
     """Register a new user and return tokens."""
-    existing = await get_user_by_email(db, data.email)
+    try:
+        existing = await get_user_by_email(db, data.email)
+    except (ConnectionRefusedError, OSError, SQLAlchemyError) as exc:
+        _raise_database_unavailable(exc)
     if existing:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="User with this email already exists",
         )
 
-    user = await create_user(db, data.email, data.name, data.password)
+    try:
+        user = await create_user(db, data.email, data.name, data.password)
+    except (ConnectionRefusedError, OSError, SQLAlchemyError) as exc:
+        _raise_database_unavailable(exc)
     return TokenResponse(
         access_token=create_access_token(str(user.id)),
         refresh_token=create_refresh_token(str(user.id)),
@@ -74,7 +91,10 @@ async def register(request: Request, data: RegisterRequest, db: AsyncSession = D
 @limiter.limit("20/minute")
 async def login(request: Request, data: LoginRequest, db: AsyncSession = Depends(get_db)):
     """Authenticate user and return tokens."""
-    user = await get_user_by_email(db, data.email)
+    try:
+        user = await get_user_by_email(db, data.email)
+    except (ConnectionRefusedError, OSError, SQLAlchemyError) as exc:
+        _raise_database_unavailable(exc)
     if not user or not verify_password(data.password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -99,7 +119,10 @@ async def refresh(request: RefreshRequest, db: AsyncSession = Depends(get_db)):
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
 
-    user = await get_user_by_id(db, uuid.UUID(user_id))
+    try:
+        user = await get_user_by_id(db, uuid.UUID(user_id))
+    except (ConnectionRefusedError, OSError, SQLAlchemyError) as exc:
+        _raise_database_unavailable(exc)
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
 

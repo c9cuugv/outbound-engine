@@ -1,0 +1,9 @@
+first_name,last_name,email,company_name,company_domain,title,linkedin_url
+Sarah,Chen,sarah.chen@stripe.com,Stripe,stripe.com,Head of Product Development,https://www.linkedin.com/in/sarah-chen-stripe
+Alex,Rodriguez,alex.rodriguez@github.com,GitHub,github.com,Lead Security Engineer,https://www.linkedin.com/in/alex-rodriguez-github
+Emily,Taylor,emily.taylor@gmail.com,Freelancer,gmail.com,Independent Marketing Consultant,https://www.linkedin.com/in/emily-taylor-marketing
+Michael,Chang,michael.chang@microsoft.com,Microsoft,microsoft.com,Director of Engineering,https://www.linkedin.com/in/michael-chang-microsoft
+Jessica,Patel,jessica.patel@uber.com,Uber,uber.com,Senior Operations Manager,https://www.linkedin.com/in/jessica-patel-uber
+David,Kim,david.kim@slack.com,Slack,slack.com,VP of Sales,https://www.linkedin.com/in/david-kim-slack
+Sophia,Martinez,sophia.martinez@airbnb.com,Airbnb,airbnb.com,Staff Software Engineer,https://www.linkedin.com/in/sophia-martinez-airbnb
+James,Wilson,james.wilson@zoom.us,Zoom,zoom.us,Head of Customer Success,https://www.linkedin.com/in/james-wilson-zoom

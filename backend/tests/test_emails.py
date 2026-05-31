@@ -6,7 +6,6 @@ GET    /api/v1/campaigns/{id}/emails/{email_id}
 PATCH  /api/v1/campaigns/{id}/emails/{email_id}
 POST   /api/v1/campaigns/{id}/emails/{email_id}/approve
 POST   /api/v1/campaigns/{id}/emails/approve-all
-POST   /api/v1/campaigns/{id}/emails/{email_id}/regenerate
 """
 
 import uuid
@@ -281,7 +280,6 @@ class TestApproveAllEmails:
         assert resp.status_code == 200
         body = resp.json()
         assert body["approved"] == 2
-        assert body["skipped"] == 0
 
     async def test_approve_all_skips_non_drafts(
         self, client: AsyncClient, auth_headers: dict,
@@ -311,37 +309,3 @@ class TestApproveAllEmails:
         )
         assert resp.status_code == 404
 
-
-# ---------------------------------------------------------------------------
-# Regenerate
-# ---------------------------------------------------------------------------
-
-class TestRegenerateEmail:
-    async def test_regenerate_email_updates_subject_and_resets_flags(
-        self, client: AsyncClient, auth_headers: dict,
-        db_session: AsyncSession, registered_user
-    ):
-        user, _ = registered_user
-        campaign, _, email = await _seed_campaign_and_email(db_session, user.id)
-        resp = await client.post(
-            f"/api/v1/campaigns/{campaign.id}/emails/{email.id}/regenerate",
-            headers=auth_headers,
-        )
-        assert resp.status_code == 200
-        body = resp.json()
-        assert body["regenerated"] is True
-        assert body["status"] == "draft"
-
-    async def test_regenerate_nonexistent_email_returns_404(
-        self, client: AsyncClient, auth_headers: dict,
-        db_session: AsyncSession, registered_user
-    ):
-        user, _ = registered_user
-        campaign = Campaign(owner_id=user.id, name="C", status="draft")
-        db_session.add(campaign)
-        await db_session.commit()
-        resp = await client.post(
-            f"/api/v1/campaigns/{campaign.id}/emails/{uuid.uuid4()}/regenerate",
-            headers=auth_headers,
-        )
-        assert resp.status_code == 404

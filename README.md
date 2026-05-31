@@ -1,72 +1,57 @@
 # OutboundEngine
 
-**AI-Powered Cold Outreach Campaign Orchestrator**
+Active branch for local-first outreach ops app.
 
-An open-source system that researches target accounts using AI, generates hyper-personalized multi-step email sequences, and manages sending with deliverability-aware scheduling and full analytics.
+## Active Scope
 
-## Tech Stack
+- Auth + JWT refresh
+- Lead CRUD + CSV import
+- Campaign CRUD + launch/pause/resume
+- Email review + approve flows
+- Tracking endpoints
+- Analytics + live WebSocket feed
 
-| Layer | Technology |
-|-------|-----------|
-| Frontend | React 18 + TypeScript + Vite + Tailwind 4 |
-| API | FastAPI (Python 3.12) |
-| Database | PostgreSQL 16 + Alembic migrations |
-| Queue | Redis 7 + Celery (workers + beat) |
-| AI | Gemini (free default), Groq (free), Claude (paid) |
-| Email | Resend / SendGrid |
-| State | TanStack Query + React Hook Form + Zod |
-| Charts | Recharts |
-| Real-time | WebSocket (live campaign events) |
+Parked surfaces live in [NOT_WORKING.md](NOT_WORKING.md) and [`not working/`](not%20working/README.md).
 
-## Project Structure
+## Stack
 
-```
+| Layer | Tech |
+| --- | --- |
+| Frontend | React 18 + TypeScript + Vite |
+| API | FastAPI + SQLAlchemy |
+| DB | PostgreSQL 16 |
+| Cache / pub-sub | Redis 7 |
+| Migrations | Alembic |
+| UI serving in Docker | Nginx |
+
+## Project Shape
+
+```text
 outbound-engine/
 ├── backend/
-│   ├── app/
-│   │   ├── ai/                # AI provider layer
-│   │   │   ├── factory.py     # Provider registry & selection
-│   │   │   ├── providers.py   # Gemini, Groq, Claude, Anthropic API
-│   │   │   ├── safe_generate.py # Retry + JSON parsing + validation
-│   │   │   ├── schemas.py     # Pydantic output schemas (anti-hallucination)
-│   │   │   └── prompts/       # Research & email generation prompts
-│   │   ├── api/v1/            # REST endpoints (auth, leads, campaigns, analytics, tracking, websocket)
-│   │   ├── models/            # SQLAlchemy ORM (user, lead, campaign, template, email, reply, tracking)
-│   │   ├── schemas/           # Pydantic request/response schemas
-│   │   ├── services/          # Business logic (auth, CSV import, email providers, scraper, signals)
-│   │   ├── workers/           # Celery tasks (email gen, send, reply detection, research)
-│   │   └── utils/             # Email validation, helpers
-│   ├── alembic/               # 7 database migrations
-│   ├── tests/                 # Schema validation tests
-│   ├── requirements.txt
-│   └── Dockerfile
+│   ├── app/api/v1/         # active REST + websocket surfaces
+│   ├── app/models/         # SQLAlchemy models
+│   ├── app/services/       # auth, lead, campaign, tracking, import
+│   ├── app/ai/             # provider modules kept for future re-enable
+│   ├── alembic/            # DB migrations
+│   └── tests/              # backend regression coverage
 ├── frontend/
-│   ├── src/
-│   │   ├── pages/             # LeadTable, CampaignWizard, EmailReviewQueue, CampaignDashboard
-│   │   ├── components/        # Layout (AppLayout, Sidebar), UI (Button, Card, Badge, Spinner), Leads (ResearchPanel)
-│   │   ├── hooks/             # useLeads, useCampaigns, useWebSocket
-│   │   ├── api/               # Axios client with JWT + refresh
-│   │   └── types/             # Lead, Campaign, Analytics TypeScript types
-│   ├── package.json
-│   └── vite.config.ts         # Proxy to backend :8000
-├── docker-compose.yml         # PostgreSQL + Redis + API + Worker + Beat
-├── .env.example
-├── OutboundEngine-PRD.md
-├── OutboundEngine-Execution-Plan.md
-└── DEVELOPER-B-PLAN.md
+│   ├── src/pages/          # leads, campaigns, review, dashboard, login
+│   ├── src/hooks/          # react-query + websocket hooks
+│   └── src/api/            # typed API client
+├── docker-compose.yml      # db + redis + migrate + api + frontend
+├── start.sh
+├── stop.sh
+└── NOT_WORKING.md
 ```
 
-## Quick Start
+## Local Setup
 
 ```bash
-# 1. Clone and configure
 cp .env.example .env
-# Edit .env — at minimum set GEMINI_API_KEY (free from aistudio.google.com)
 
-# 2. Start infrastructure
-docker-compose up -d db redis
+docker compose up -d db redis
 
-# 3. Backend
 cd backend
 python -m venv venv
 source venv/bin/activate
@@ -74,43 +59,41 @@ pip install -r requirements.txt
 alembic upgrade head
 uvicorn app.main:app --reload --port 8000
 
-# 4. Frontend (new terminal)
-cd frontend
+cd ../frontend
 npm install
 npm run dev
-# Opens at http://localhost:3000
 ```
 
-## AI Provider Configuration
+- Frontend: `http://localhost:3000`
+- API: `http://localhost:8000`
+- Docs: `http://localhost:8000/docs`
 
-```env
-# At least one required (Gemini is free, no credit card)
-GEMINI_API_KEY=AIza...              # Free from aistudio.google.com
-GROQ_API_KEY=gsk_...               # Free from console.groq.com
-ANTHROPIC_API_KEY=sk-ant-...       # Paid
+## Docker Setup
 
-# Task-to-provider mapping (all default to gemini)
-RESEARCH_PROVIDER=gemini
-EMAIL_GEN_PROVIDER=gemini
-SENTIMENT_PROVIDER=gemini
+```bash
+cp .env.example .env
+./start.sh
 ```
 
-## Architecture
+`start.sh` brings up supported services only:
 
-```
-React (localhost:3000)
-  │ Vite proxy /api → :8000
-  ▼
-FastAPI (REST + WebSocket)
-  ├── PostgreSQL 16 (data layer, 7 tables)
-  ├── Redis 7 (Celery broker + cache)
-  ├── Celery Workers
-  │   ├── Research pipeline (scrape → signals → AI synthesis)
-  │   ├── Email generation (AI-powered, anti-spam prompts)
-  │   ├── Email sending (Resend/SendGrid, rate-limited)
-  │   └── Reply detection (IMAP polling, sentiment classification)
-  └── AI Engine (multi-provider factory)
-      ├── Gemini 2.0 Flash (free default)
-      ├── Groq Llama 3.1 70B (free alternative)
-      └── Anthropic Claude (paid, highest quality)
+- `db`
+- `redis`
+- `migrate`
+- `api`
+- `frontend`
+
+## Env Notes
+
+- `.env.example` uses `localhost` URLs for host-run backend.
+- Docker Compose overrides DB/Redis hosts inside containers.
+- Set strong `JWT_SECRET` before running outside tests.
+- AI provider envs may stay empty unless you re-enable parked AI surfaces.
+
+## Verification
+
+```bash
+./backend/venv/bin/python -m pytest backend/tests -q
+cd frontend && npm run build
+docker compose config
 ```

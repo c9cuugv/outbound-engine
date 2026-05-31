@@ -69,6 +69,43 @@ class TestCreateLead:
         resp = await client.post("/api/v1/leads", json=LEAD_PAYLOAD)
         assert resp.status_code == 401
 
+    async def test_create_lead_blank_first_name_returns_422(
+        self, client: AsyncClient, auth_headers: dict
+    ):
+        resp = await client.post(
+            "/api/v1/leads", json={**LEAD_PAYLOAD, "first_name": "", "email": "blank1@test.com"},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 422
+
+    async def test_create_lead_blank_last_name_returns_422(
+        self, client: AsyncClient, auth_headers: dict
+    ):
+        resp = await client.post(
+            "/api/v1/leads", json={**LEAD_PAYLOAD, "last_name": "", "email": "blank2@test.com"},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 422
+
+    async def test_create_lead_invalid_email_returns_422(
+        self, client: AsyncClient, auth_headers: dict
+    ):
+        resp = await client.post(
+            "/api/v1/leads", json={**LEAD_PAYLOAD, "email": "notanemail"},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 422
+
+    async def test_create_lead_oversized_source_returns_422(
+        self, client: AsyncClient, auth_headers: dict
+    ):
+        resp = await client.post(
+            "/api/v1/leads",
+            json={**LEAD_PAYLOAD, "email": "src@test.com", "source": "x" * 51},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 422
+
 
 # ---------------------------------------------------------------------------
 # List / pagination
@@ -126,6 +163,17 @@ class TestListLeads:
         )
         resp = await client.get("/api/v1/leads?status=contacted", headers=auth_headers)
         assert all(i["status"] == "contacted" for i in resp.json()["items"])
+
+    async def test_filter_by_company_domain(
+        self, client: AsyncClient, auth_headers: dict
+    ):
+        await create_lead(client, auth_headers, {"email": "d1@acme.com", "company_domain": "acme.com"})
+        await create_lead(client, auth_headers, {"email": "d2@other.com", "company_domain": "other.com"})
+        resp = await client.get("/api/v1/leads?company_domain=acme.com", headers=auth_headers)
+        assert resp.status_code == 200
+        items = resp.json()["items"]
+        assert len(items) >= 1
+        assert all(i["company_domain"] == "acme.com" for i in items)
 
     async def test_leads_isolated_between_users(
         self, client: AsyncClient, auth_headers: dict, second_user
@@ -213,6 +261,28 @@ class TestUpdateLead:
             headers=auth_headers,
         )
         assert resp.status_code == 409
+
+    async def test_patch_lead_invalid_email_returns_422(
+        self, client: AsyncClient, auth_headers: dict
+    ):
+        lead = await create_lead(client, auth_headers)
+        resp = await client.patch(
+            f"/api/v1/leads/{lead['id']}",
+            json={"email": "bad-email"},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 422
+
+    async def test_patch_lead_invalid_status_returns_422(
+        self, client: AsyncClient, auth_headers: dict
+    ):
+        lead = await create_lead(client, auth_headers)
+        resp = await client.patch(
+            f"/api/v1/leads/{lead['id']}",
+            json={"status": "garbage"},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 422
 
 
 # ---------------------------------------------------------------------------
