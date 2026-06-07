@@ -11,7 +11,7 @@ services:
     environment:
       POSTGRES_DB: outbound
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     ports:
       - "127.0.0.1:5432:5432"
     volumes:
@@ -49,34 +49,55 @@ services:
 
   api:
     build: ./backend
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1 --loop uvloop --log-level warning
+    image: outbound-engine-api
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1 --loop uvloop --log-level warning --max-requests 1000 --max-requests-jitter 100 --timeout-keep-alive 75
+    ports:
+      - "127.0.0.1:8000:8000"
     env_file: .env
     environment:
-      DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/outbound
+      DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/outbound
       REDIS_URL: redis://:@redis:6379/0
     depends_on:
       db:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 320M
 
   worker:
     build: ./backend
-    command: python -m celery -A app.workers.celery_app worker --loglevel=info --concurrency=2
+    image: outbound-engine-api
+    command: python -m celery -A app.workers.celery_app worker --loglevel=warning --concurrency=1 --max-tasks-per-child=100 --prefetch-multiplier=1 --without-gossip --without-mingle --without-heartbeat
     env_file: .env
     environment:
-      DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/outbound
+      DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/outbound
       REDIS_URL: redis://:@redis:6379/0
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import redis,os; redis.from_url(os.environ['REDIS_URL']).ping()"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     restart: unless-stopped
     deploy:
       resources:
         limits:
           cpus: '0.5'
-          memory: 256M
+          memory: 128M
 
   frontend:
     build: ./frontend
