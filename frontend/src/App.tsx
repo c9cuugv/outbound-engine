@@ -2,6 +2,7 @@ import { lazy, Suspense, Component, type ReactNode } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import AppLayout from "./components/layout/AppLayout";
 import LoginPage from "./pages/LoginPage";
+import { SkeletonRows, ErrorState } from "./components/ui/Feedback";
 
 const LeadTable = lazy(() => import("./pages/LeadTable"));
 const CampaignList = lazy(() => import("./pages/CampaignList"));
@@ -11,35 +12,28 @@ const CampaignDashboard = lazy(() => import("./pages/CampaignDashboard"));
 const LeadTimeline = lazy(() => import("./pages/LeadTimeline"));
 const QuickDraft = lazy(() => import("./pages/QuickDraft"));
 
-function PageSkeleton() {
-  return (
-    <div className="flex h-[50vh] items-center justify-center">
-      <div className="skeleton h-8 w-8 rounded-full" />
-    </div>
-  );
-}
+class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
+  state: { error: Error | null } = { error: null };
 
-class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
-  state = { hasError: false };
-  static getDerivedStateFromError() {
-    return { hasError: true };
+  static getDerivedStateFromError(error: Error) {
+    return { error };
   }
+
   render() {
-    if (this.state.hasError) {
-      return (
-        <div className="flex h-[50vh] flex-col items-center justify-center gap-3">
-          <p className="text-[13px] text-[var(--color-danger)]">Something went wrong.</p>
-          <button
-            className="text-[13px] underline"
-            onClick={() => this.setState({ hasError: false })}
-          >
-            Try again
-          </button>
-        </div>
-      );
+    if (this.state.error) {
+      return <ErrorState error={this.state.error} onRetry={() => this.setState({ error: null })} />;
     }
     return this.props.children;
   }
+}
+
+/** Every lazy route gets the same boundary + fallback treatment. */
+function Page({ children }: { children: ReactNode }) {
+  return (
+    <ErrorBoundary>
+      <Suspense fallback={<SkeletonRows rows={6} />}>{children}</Suspense>
+    </ErrorBoundary>
+  );
 }
 
 export default function App() {
@@ -51,74 +45,61 @@ export default function App() {
         <Route
           path="/leads"
           element={
-            <ErrorBoundary>
-              <Suspense fallback={<PageSkeleton />}>
-                <LeadTable />
-              </Suspense>
-            </ErrorBoundary>
+            <Page>
+              <LeadTable />
+            </Page>
           }
         />
         <Route
           path="/campaigns"
           element={
-            <ErrorBoundary>
-              <Suspense fallback={<PageSkeleton />}>
-                <CampaignList />
-              </Suspense>
-            </ErrorBoundary>
+            <Page>
+              <CampaignList />
+            </Page>
           }
         />
         <Route
           path="/campaigns/new"
           element={
-            <ErrorBoundary>
-              <Suspense fallback={<PageSkeleton />}>
-                <CampaignBuilder />
-              </Suspense>
-            </ErrorBoundary>
+            <Page>
+              <CampaignBuilder />
+            </Page>
           }
         />
         <Route
           path="/campaigns/:id/review"
           element={
-            <ErrorBoundary>
-              <Suspense fallback={<PageSkeleton />}>
-                <EmailReviewQueue />
-              </Suspense>
-            </ErrorBoundary>
+            <Page>
+              <EmailReviewQueue />
+            </Page>
           }
         />
         <Route
           path="/campaigns/:id/dashboard"
           element={
-            <ErrorBoundary>
-              <Suspense fallback={<PageSkeleton />}>
-                <CampaignDashboard />
-              </Suspense>
-            </ErrorBoundary>
+            <Page>
+              <CampaignDashboard />
+            </Page>
           }
         />
         <Route
           path="/campaigns/:id/leads/:leadId"
           element={
-            <ErrorBoundary>
-              <Suspense fallback={<PageSkeleton />}>
-                <LeadTimeline />
-              </Suspense>
-            </ErrorBoundary>
+            <Page>
+              <LeadTimeline />
+            </Page>
           }
         />
         <Route
           path="/quick-draft"
           element={
-            <ErrorBoundary>
-              <Suspense fallback={<PageSkeleton />}>
-                <QuickDraft />
-              </Suspense>
-            </ErrorBoundary>
+            <Page>
+              <QuickDraft />
+            </Page>
           }
         />
       </Route>
+      <Route path="*" element={<Navigate to="/leads" replace />} />
     </Routes>
   );
 }
