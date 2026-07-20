@@ -37,10 +37,11 @@ async def create_campaign_endpoint(
 async def list_campaigns(
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
+    status: str | None = Query(None),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    return await get_campaigns(db, owner_id=current_user.id, limit=limit, offset=offset)
+    return await get_campaigns(db, owner_id=current_user.id, limit=limit, offset=offset, status=status)
 
 
 @router.get("/campaigns/{campaign_id}", response_model=CampaignResponse)
@@ -95,6 +96,8 @@ async def launch_campaign(
 ):
     """Set campaign status to 'active' and record launched_at timestamp."""
     campaign = await get_or_404(get_campaign_by_id, db, campaign_id, current_user.id, detail="Campaign not found")
+    if campaign.status == "active":
+        raise HTTPException(status_code=400, detail="Campaign is already active")
     return await update_campaign(db, campaign, {
         "status": "active",
         "launched_at": datetime.now(timezone.utc),
@@ -107,8 +110,9 @@ async def pause_campaign(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Set campaign status to 'paused'."""
     campaign = await get_or_404(get_campaign_by_id, db, campaign_id, current_user.id, detail="Campaign not found")
+    if campaign.status != "active":
+        raise HTTPException(status_code=400, detail="Only active campaigns can be paused")
     return await update_campaign(db, campaign, {"status": "paused"})
 
 
@@ -118,8 +122,9 @@ async def resume_campaign(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Set campaign status back to 'active'."""
     campaign = await get_or_404(get_campaign_by_id, db, campaign_id, current_user.id, detail="Campaign not found")
+    if campaign.status != "paused":
+        raise HTTPException(status_code=400, detail="Only paused campaigns can be resumed")
     return await update_campaign(db, campaign, {"status": "active"})
 
 

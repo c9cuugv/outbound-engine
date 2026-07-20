@@ -11,6 +11,7 @@ POST   /api/v1/leads/bulk        (CSV import URL placeholder)
 
 import uuid
 import pytest
+from unittest.mock import patch, AsyncMock
 from httpx import AsyncClient
 
 pytestmark = pytest.mark.asyncio
@@ -87,6 +88,16 @@ class TestCreateLead:
         )
         assert resp.status_code == 422
 
+    async def test_create_lead_oversized_first_name_returns_422(
+        self, client: AsyncClient, auth_headers: dict
+    ):
+        resp = await client.post(
+            "/api/v1/leads",
+            json={**LEAD_PAYLOAD, "email": "long@test.com", "first_name": "A" * 101},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 422
+
     async def test_create_lead_invalid_email_returns_422(
         self, client: AsyncClient, auth_headers: dict
     ):
@@ -105,6 +116,47 @@ class TestCreateLead:
             headers=auth_headers,
         )
         assert resp.status_code == 422
+
+    async def test_create_lead_oversized_last_name_returns_422(
+        self, client: AsyncClient, auth_headers: dict
+    ):
+        resp = await client.post(
+            "/api/v1/leads",
+            json={**LEAD_PAYLOAD, "email": "longlast@test.com", "last_name": "Z" * 101},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 422
+
+    async def test_create_lead_oversized_email_returns_422(
+        self, client: AsyncClient, auth_headers: dict
+    ):
+        resp = await client.post(
+            "/api/v1/leads",
+            json={**LEAD_PAYLOAD, "email": f"{'a' * 250}@x.com"},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 422
+
+    async def test_create_lead_invalid_linkedin_url_returns_422(
+        self, client: AsyncClient, auth_headers: dict
+    ):
+        resp = await client.post(
+            "/api/v1/leads",
+            json={**LEAD_PAYLOAD, "email": "li_bad@test.com", "linkedin_url": "https://twitter.com/alice"},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 422
+
+    async def test_create_lead_valid_linkedin_url_accepted(
+        self, client: AsyncClient, auth_headers: dict
+    ):
+        resp = await client.post(
+            "/api/v1/leads",
+            json={**LEAD_PAYLOAD, "email": "li_ok@test.com", "linkedin_url": "https://www.linkedin.com/in/alice"},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 201
+        assert resp.json()["linkedin_url"] == "https://www.linkedin.com/in/alice"
 
 
 # ---------------------------------------------------------------------------
@@ -175,6 +227,19 @@ class TestListLeads:
         assert len(items) >= 1
         assert all(i["company_domain"] == "acme.com" for i in items)
 
+    async def test_filter_by_research_status(
+        self, client: AsyncClient, auth_headers: dict
+    ):
+        await create_lead(client, auth_headers, {"email": "rs@test.com", "first_name": "Rs"})
+        resp = await client.get("/api/v1/leads?research_status=pending", headers=auth_headers)
+        assert resp.status_code == 200
+        items = resp.json()["items"]
+        assert len(items) >= 1
+        assert all(i["research_status"] == "pending" for i in items)
+        resp2 = await client.get("/api/v1/leads?research_status=completed", headers=auth_headers)
+        assert resp2.status_code == 200
+        assert resp2.json()["total_count"] == 0
+
     async def test_leads_isolated_between_users(
         self, client: AsyncClient, auth_headers: dict, second_user
     ):
@@ -182,6 +247,38 @@ class TestListLeads:
         await create_lead(client, auth_headers)
         resp = await client.get("/api/v1/leads", headers=second_headers)
         assert resp.json()["total_count"] == 0
+
+    async def test_list_leads_unauthenticated_returns_401(self, client: AsyncClient):
+        resp = await client.get("/api/v1/leads")
+        assert resp.status_code == 401
+
+    async def test_list_leads_invalid_order_param_returns_422(
+        self, client: AsyncClient, auth_headers: dict
+    ):
+        resp = await client.get("/api/v1/leads?order=badorder", headers=auth_headers)
+        assert resp.status_code == 422
+
+    async def test_list_leads_per_page_exceeds_max_returns_422(
+        self, client: AsyncClient, auth_headers: dict
+    ):
+        resp = await client.get("/api/v1/leads?per_page=201", headers=auth_headers)
+        assert resp.status_code == 422
+
+    async def test_list_leads_invalid_sort_param_returns_422(
+        self, client: AsyncClient, auth_headers: dict
+    ):
+        resp = await client.get("/api/v1/leads?sort=nonexistent_column", headers=auth_headers)
+        assert resp.status_code == 422
+
+    async def test_list_leads_sort_by_first_name_asc_returns_ordered_results(
+        self, client: AsyncClient, auth_headers: dict
+    ):
+        await create_lead(client, auth_headers, {"email": "zebra@sort.com", "first_name": "Zebra"})
+        await create_lead(client, auth_headers, {"email": "apple@sort.com", "first_name": "Apple"})
+        resp = await client.get("/api/v1/leads?sort=first_name&order=asc", headers=auth_headers)
+        assert resp.status_code == 200
+        names = [i["first_name"] for i in resp.json()["items"]]
+        assert names == sorted(names)
 
 
 # ---------------------------------------------------------------------------
@@ -210,6 +307,10 @@ class TestGetLead:
         _, second_headers = second_user
         resp = await client.get(f"/api/v1/leads/{lead['id']}", headers=second_headers)
         assert resp.status_code == 404
+
+    async def test_get_lead_unauthenticated_returns_401(self, client: AsyncClient):
+        resp = await client.get(f"/api/v1/leads/{uuid.uuid4()}")
+        assert resp.status_code == 401
 
 
 # ---------------------------------------------------------------------------
@@ -262,13 +363,24 @@ class TestUpdateLead:
         )
         assert resp.status_code == 409
 
-    async def test_patch_lead_invalid_email_returns_422(
+    async def test_patch_lead_email_without_at_sign_returns_422(
         self, client: AsyncClient, auth_headers: dict
     ):
         lead = await create_lead(client, auth_headers)
         resp = await client.patch(
             f"/api/v1/leads/{lead['id']}",
             json={"email": "bad-email"},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 422
+
+    async def test_patch_lead_oversized_email_returns_422(
+        self, client: AsyncClient, auth_headers: dict
+    ):
+        lead = await create_lead(client, auth_headers)
+        resp = await client.patch(
+            f"/api/v1/leads/{lead['id']}",
+            json={"email": f"{'a' * 250}@x.com"},
             headers=auth_headers,
         )
         assert resp.status_code == 422
@@ -283,6 +395,68 @@ class TestUpdateLead:
             headers=auth_headers,
         )
         assert resp.status_code == 422
+
+    async def test_patch_lead_blank_first_name_returns_422(
+        self, client: AsyncClient, auth_headers: dict
+    ):
+        lead = await create_lead(client, auth_headers, {"email": "blank_fn@test.com"})
+        resp = await client.patch(
+            f"/api/v1/leads/{lead['id']}",
+            json={"first_name": ""},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 422
+
+    async def test_patch_lead_blank_last_name_returns_422(
+        self, client: AsyncClient, auth_headers: dict
+    ):
+        lead = await create_lead(client, auth_headers, {"email": "blank_ln@test.com"})
+        resp = await client.patch(
+            f"/api/v1/leads/{lead['id']}",
+            json={"last_name": ""},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 422
+
+    async def test_patch_lead_invalid_email_returns_422(
+        self, client: AsyncClient, auth_headers: dict
+    ):
+        lead = await create_lead(client, auth_headers, {"email": "patch_email@test.com"})
+        resp = await client.patch(
+            f"/api/v1/leads/{lead['id']}",
+            json={"email": "notanemail"},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 422
+
+    async def test_patch_lead_invalid_linkedin_url_returns_422(
+        self, client: AsyncClient, auth_headers: dict
+    ):
+        lead = await create_lead(client, auth_headers, {"email": "patch_li@test.com"})
+        resp = await client.patch(
+            f"/api/v1/leads/{lead['id']}",
+            json={"linkedin_url": "https://twitter.com/alice"},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 422
+
+    async def test_patch_lead_unauthenticated_returns_401(self, client: AsyncClient):
+        resp = await client.patch(
+            f"/api/v1/leads/{uuid.uuid4()}", json={"title": "CEO"}
+        )
+        assert resp.status_code == 401
+
+    async def test_patch_lead_owned_by_another_user_returns_404(
+        self, client: AsyncClient, auth_headers: dict, second_user
+    ):
+        lead = await create_lead(client, auth_headers)
+        _, second_headers = second_user
+        resp = await client.patch(
+            f"/api/v1/leads/{lead['id']}",
+            json={"title": "Intruder"},
+            headers=second_headers,
+        )
+        assert resp.status_code == 404
 
 
 # ---------------------------------------------------------------------------
@@ -314,6 +488,18 @@ class TestDeleteLead:
         resp = await client.delete(f"/api/v1/leads/{uuid.uuid4()}", headers=auth_headers)
         assert resp.status_code == 404
 
+    async def test_delete_lead_unauthenticated_returns_401(self, client: AsyncClient):
+        resp = await client.delete(f"/api/v1/leads/{uuid.uuid4()}")
+        assert resp.status_code == 401
+
+    async def test_delete_lead_owned_by_another_user_returns_404(
+        self, client: AsyncClient, auth_headers: dict, second_user
+    ):
+        lead = await create_lead(client, auth_headers)
+        _, second_headers = second_user
+        resp = await client.delete(f"/api/v1/leads/{lead['id']}", headers=second_headers)
+        assert resp.status_code == 404
+
 
 # ---------------------------------------------------------------------------
 # Bulk import (CSV)  — /api/v1/leads/bulk
@@ -331,3 +517,111 @@ class TestBulkImport:
         # registered and auth-gated (not 404).
         resp = await client.post("/api/v1/leads/bulk", headers=auth_headers)
         assert resp.status_code != 404
+
+    async def test_bulk_non_csv_extension_returns_400(
+        self, client: AsyncClient, auth_headers: dict
+    ):
+        content = b"first_name,last_name,email\nAlice,Smith,alice@acme.com"
+        resp = await client.post(
+            "/api/v1/leads/bulk",
+            files={"file": ("leads.txt", content, "text/plain")},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 400
+
+    @patch("app.services.csv_import.check_mx_record", new_callable=AsyncMock, return_value=True)
+    async def test_bulk_valid_csv_imports_lead(
+        self, _mock_mx, client: AsyncClient, auth_headers: dict
+    ):
+        content = b"first_name,last_name,email\nAlice,Smith,alice_bulk@acme.com"
+        resp = await client.post(
+            "/api/v1/leads/bulk",
+            files={"file": ("leads.csv", content, "text/csv")},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["imported"] == 1
+        assert body["skipped_invalid"] == 0
+
+    @patch("app.services.csv_import.check_mx_record", new_callable=AsyncMock, return_value=True)
+    async def test_bulk_missing_required_field_skips_row(
+        self, _mock_mx, client: AsyncClient, auth_headers: dict
+    ):
+        # CSV row missing last_name
+        content = b"first_name,email\nAlice,missing_last@acme.com"
+        resp = await client.post(
+            "/api/v1/leads/bulk",
+            files={"file": ("leads.csv", content, "text/csv")},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["imported"] == 0
+        assert body["skipped_invalid"] == 1
+        assert body["errors"][0]["reason"].startswith("missing required fields")
+
+
+class TestResearch:
+    @patch("app.api.v1.leads.research_lead")
+    async def test_trigger_research_returns_202(
+        self, mock_research, client: AsyncClient, auth_headers: dict
+    ):
+        lead = await create_lead(client, auth_headers, {"email": "res1@test.com"})
+        resp = await client.post(
+            f"/api/v1/leads/{lead['id']}/research", headers=auth_headers
+        )
+        assert resp.status_code == 202
+        mock_research.delay.assert_called_once_with(lead["id"])
+
+    @patch("app.api.v1.leads.research_lead")
+    async def test_trigger_research_nonexistent_returns_404(
+        self, mock_research, client: AsyncClient, auth_headers: dict
+    ):
+        resp = await client.post(
+            f"/api/v1/leads/{uuid.uuid4()}/research", headers=auth_headers
+        )
+        assert resp.status_code == 404
+        mock_research.delay.assert_not_called()
+
+    @patch("app.api.v1.leads.research_lead")
+    async def test_trigger_research_unauthenticated_returns_401(
+        self, mock_research, client: AsyncClient
+    ):
+        resp = await client.post(f"/api/v1/leads/{uuid.uuid4()}/research")
+        assert resp.status_code == 401
+        mock_research.delay.assert_not_called()
+
+    @patch("app.api.v1.leads.research_lead")
+    async def test_trigger_research_other_users_lead_returns_404(
+        self, mock_research, client: AsyncClient, auth_headers: dict, second_user
+    ):
+        lead = await create_lead(client, auth_headers, {"email": "res2@test.com"})
+        _, second_headers = second_user
+        resp = await client.post(
+            f"/api/v1/leads/{lead['id']}/research", headers=second_headers
+        )
+        assert resp.status_code == 404
+
+
+class TestTagValidation:
+    async def test_create_lead_oversized_tag_returns_422(
+        self, client: AsyncClient, auth_headers: dict
+    ):
+        resp = await client.post(
+            "/api/v1/leads",
+            json={**LEAD_PAYLOAD, "email": "tag_long@test.com", "tags": ["a" * 51]},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 422
+
+    async def test_create_lead_duplicate_tags_deduplicated(
+        self, client: AsyncClient, auth_headers: dict
+    ):
+        resp = await client.post(
+            "/api/v1/leads",
+            json={**LEAD_PAYLOAD, "email": "tag_dedup@test.com", "tags": ["vip", "vip", "prospect"]},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 201
+        assert resp.json()["tags"] == ["vip", "prospect"]

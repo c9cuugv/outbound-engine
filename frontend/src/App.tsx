@@ -8,6 +8,8 @@ const CampaignList = lazy(() => import("./pages/CampaignList"));
 const CampaignBuilder = lazy(() => import("./pages/CampaignBuilder"));
 const EmailReviewQueue = lazy(() => import("./pages/EmailReviewQueue"));
 const CampaignDashboard = lazy(() => import("./pages/CampaignDashboard"));
+const LeadTimeline = lazy(() => import("./pages/LeadTimeline"));
+const QuickDraft = lazy(() => import("./pages/QuickDraft"));
 
 function PageSkeleton() {
   return (
@@ -92,6 +94,26 @@ export default function App() {
             <ErrorBoundary>
               <Suspense fallback={<PageSkeleton />}>
                 <CampaignDashboard />
+              </Suspense>
+            </ErrorBoundary>
+          }
+        />
+        <Route
+          path="/campaigns/:id/leads/:leadId"
+          element={
+            <ErrorBoundary>
+              <Suspense fallback={<PageSkeleton />}>
+                <LeadTimeline />
+              </Suspense>
+            </ErrorBoundary>
+          }
+        />
+        <Route
+          path="/quick-draft"
+          element={
+            <ErrorBoundary>
+              <Suspense fallback={<PageSkeleton />}>
+                <QuickDraft />
               </Suspense>
             </ErrorBoundary>
           }

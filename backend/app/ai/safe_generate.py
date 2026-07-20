@@ -138,6 +138,8 @@ async def safe_generate(
         try:
             # Call the LLM
             raw = await provider.generate(system_prompt, full_prompt)
+            if raw is None:
+                raise ValueError("LLM provider returned None")
             logger.debug("Raw LLM response (first 500 chars): %s", raw[:500])
 
             # Parse JSON
@@ -187,5 +189,3 @@ async def safe_generate(
         f"Failed to generate valid {output_schema.__name__} "
         f"after {max_retries} attempts. Last error: {last_error}"
     )
-/bin/bash: line 4: /Volumes/APPLE: Operation not permitted
-/bin/bash: line 5: /Volumes/APPLE: Operation not permitted

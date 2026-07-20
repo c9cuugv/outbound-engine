@@ -1,9 +1,10 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { Users, BarChart3, Zap, User } from "lucide-react";
+import { Users, BarChart3, Zap, User, Sparkles } from "lucide-react";
 
 const NAV_ITEMS = [
   { to: "/leads", label: "Leads", icon: Users },
   { to: "/campaigns", label: "Campaigns", icon: BarChart3 },
+  { to: "/quick-draft", label: "Quick Draft", icon: Sparkles },
 ];
 
 export default function Sidebar() {

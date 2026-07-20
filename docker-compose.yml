@@ -4,7 +4,7 @@ services:
     command: >
       postgres
       -c shared_buffers=64MB
-      -c effective_cache_size=128MB
+      -c effective_cache_size=96MB
       -c max_connections=20
       -c work_mem=2MB
       -c maintenance_work_mem=32MB
@@ -16,6 +16,7 @@ services:
       - "127.0.0.1:5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    shm_size: '128m'
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 30s
@@ -23,15 +24,26 @@ services:
       retries: 5
       start_period: 20s
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    security_opt:
+      - no-new-privileges:true
+    mem_swappiness: 0
+    pids_limit: 50
+    networks:
+      - backend
     deploy:
       resources:
         limits:
           cpus: '0.5'
-          memory: 256M
+          memory: 150M
 
   redis:
     image: redis:7-alpine
-    command: redis-server --save "" --appendonly no --maxmemory 96mb --maxmemory-policy allkeys-lru
+    command: redis-server --save "" --appendonly no --maxmemory 96mb --maxmemory-policy allkeys-lru --hz 5
     ports:
       - "127.0.0.1:6379:6379"
     healthcheck:
@@ -41,6 +53,17 @@ services:
       retries: 5
       start_period: 10s
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "3"
+    security_opt:
+      - no-new-privileges:true
+    mem_swappiness: 0
+    pids_limit: 50
+    networks:
+      - backend
     deploy:
       resources:
         limits:
@@ -50,69 +73,121 @@ services:
   api:
     build: ./backend
     image: outbound-engine-api
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1 --loop uvloop --log-level warning --max-requests 1000 --max-requests-jitter 100 --timeout-keep-alive 75
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1 --loop uvloop --log-level warning --no-access-log --limit-max-requests 1000 --timeout-keep-alive 75
     ports:
       - "127.0.0.1:8000:8000"
     env_file: .env
     environment:
       DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/outbound
       REDIS_URL: redis://:@redis:6379/0
-    depends_on:
-      db:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 320M
-
-  worker:
-    build: ./backend
-    image: outbound-engine-api
-    command: python -m celery -A app.workers.celery_app worker --loglevel=warning --concurrency=1 --max-tasks-per-child=100 --prefetch-multiplier=1 --without-gossip --without-mingle --without-heartbeat
-    env_file: .env
-    environment:
-      DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/outbound
-      REDIS_URL: redis://:@redis:6379/0
+      NVIDIA_BASE_URL: http://host.docker.internal:3001/v1
+      MALLOC_ARENA_MAX: "2"
+    security_opt:
+      - no-new-privileges:true
+    mem_swappiness: 0
+    tmpfs:
+      - /tmp:size=32m,mode=1777
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "python", "-c", "import redis,os; redis.from_url(os.environ['REDIS_URL']).ping()"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "3"
+    pids_limit: 100
+    ulimits:
+      nofile:
+        soft: 1024
+        hard: 2048
+    networks:
+      - backend
+      - frontend
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+
+  worker:
+    build: ./backend
+    image: outbound-engine-api
+    command: python -m celery -A app.workers.celery_app worker --loglevel=warning --concurrency=1 --pool=solo --max-tasks-per-child=100 --prefetch-multiplier=1 --without-gossip --without-mingle --without-heartbeat --time-limit=300 --soft-time-limit=270
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/outbound
+      REDIS_URL: redis://:@redis:6379/0
+      NVIDIA_BASE_URL: http://host.docker.internal:3001/v1
+      MALLOC_ARENA_MAX: "2"
+    security_opt:
+      - no-new-privileges:true
+    mem_swappiness: 0
+    tmpfs:
+      - /tmp:size=32m,mode=1777
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import os,signal;os.kill(1,0)"]
       interval: 60s
       timeout: 5s
       retries: 3
       start_period: 30s
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    pids_limit: 100
+    ulimits:
+      nofile:
+        soft: 1024
+        hard: 2048
+    networks:
+      - backend
     deploy:
       resources:
         limits:
           cpus: '0.5'
-          memory: 128M
+          memory: 192M
 
   frontend:
     build: ./frontend
     ports:
-      - "3000:80"
+      - "127.0.0.1:3000:80"
     depends_on:
       api:
         condition: service_healthy
-    restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost/index.html || exit 1"]
+      test: ["CMD-SHELL", "wget -q --spider http://localhost/ || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 10s
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    mem_swappiness: 0
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "3"
+    pids_limit: 50
+    networks:
+      - frontend
     deploy:
       resources:
         limits:
@@ -121,3 +196,9 @@ services:
 
 volumes:
   pgdata:
+
+networks:
+  backend:
+    driver: bridge
+  frontend:
+    driver: bridge
