@@ -4,6 +4,31 @@
 **Branch strategy:** all work on `chore/cleanup-2026-07` → PR → `main`. No history rewrite, no force-push.
 **Prime directive:** the project must work and must not break. Backend is the asset — clean it, do not rewrite it. Frontend is the liability — tear it down and rebuild.
 
+## Execution status
+
+| Phase | Status | Commit |
+|---|---|---|
+| 0 — Discovery | ✅ complete | findings below |
+| 1 — Repo hygiene | ✅ complete | `87aa49e` safety, `8a03246` cleanup |
+| 2 — Backend stabilisation | ✅ complete | `43b2226` |
+| 3 — Frontend teardown & design foundation | 🟡 `docs/DESIGN.md` written; CSS + primitives not started | — |
+| 4 — Page rebuild | ⬜ not started | — |
+| 5 — E2E & verification | ⬜ not started | — |
+
+**Verified green at `43b2226`:** pytest 221 passed / 0 failed (44.1s) · `tsc --noEmit` exit 0 · `app.main` imports, 48 routes · `git status` clean.
+
+### ⚠️ Sequencing constraint discovered during Phase 3 prep
+
+`src/styles/globals.css` **cannot be replaced on its own.** Every existing page
+references the old Material-3 token names (`bg-surface-container`,
+`text-on-surface-variant`, `text-primary-fixed`, …). Swapping the token layer
+before the components that consume it breaks the build immediately.
+
+The new `globals.css`, the `src/components/ui/` primitives, and `AppLayout` +
+`Sidebar` must therefore land **in one commit**. Only then can Phase 4 rebuild
+pages one at a time against a stable token layer. Do not start Phase 3 by
+deleting the CSS.
+
 ---
 
 ## Phase 0 — Discovery findings (ground truth, verified 2026-07-19)
