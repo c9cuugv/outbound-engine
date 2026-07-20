@@ -11,23 +11,33 @@
 | 0 — Discovery | ✅ complete | findings below |
 | 1 — Repo hygiene | ✅ complete | `87aa49e` safety, `8a03246` cleanup |
 | 2 — Backend stabilisation | ✅ complete | `43b2226` |
-| 3 — Frontend teardown & design foundation | 🟡 `docs/DESIGN.md` written; CSS + primitives not started | — |
-| 4 — Page rebuild | ⬜ not started | — |
-| 5 — E2E & verification | ⬜ not started | — |
+| 3 — Frontend teardown & design foundation | ✅ complete | `d90b81d` spec, `091d672` build |
+| 4 — Page rebuild | ✅ complete (all 7 pages + login) | `091d672` |
+| 5 — E2E & docs | 🟡 app verified manually in-browser; **E2E specs still target the old UI** | — |
 
-**Verified green at `43b2226`:** pytest 221 passed / 0 failed (44.1s) · `tsc --noEmit` exit 0 · `app.main` imports, 48 routes · `git status` clean.
+**Verified at `091d672`:** pytest 221 passed / 0 failed · `tsc --noEmit` exit 0 ·
+`vite build` ✓ 4.98s · every route rendered in-browser against the live
+docker-compose backend (real leads imported via `/leads/bulk`, real empty and
+populated states confirmed).
 
-### ⚠️ Sequencing constraint discovered during Phase 3 prep
+**Design checks:** hardcoded hex in `.tsx` 37 → **0** · inline `style={{}}` 6 → **0** ·
+className strings >120 chars 58 → **1** · legacy alias block removed · frontend
+src 4692 → ~3000 LOC · 4 unused dependencies dropped.
 
-`src/styles/globals.css` **cannot be replaced on its own.** Every existing page
-references the old Material-3 token names (`bg-surface-container`,
-`text-on-surface-variant`, `text-primary-fixed`, …). Swapping the token layer
-before the components that consume it breaks the build immediately.
+### Sequencing constraint (resolved)
 
-The new `globals.css`, the `src/components/ui/` primitives, and `AppLayout` +
-`Sidebar` must therefore land **in one commit**. Only then can Phase 4 rebuild
-pages one at a time against a stable token layer. Do not start Phase 3 by
-deleting the CSS.
+`globals.css` could not be replaced on its own — every page consumed the old
+Material-3 token names, so swapping the token layer alone broke the build.
+Token layer + primitives + layout + all pages therefore landed together in
+`091d672`.
+
+### ⚠️ Remaining work — Phase 5
+
+The 8 Playwright specs in `frontend/tests/e2e/features/` were written against
+the **old** UI (old selectors, old copy, old flows) and have not been run since
+the rebuild. **They should be assumed failing.** Rewriting them is the next
+task, along with fixing D6 (specs leak `temp_lead_*.csv` into the repo — now
+gitignored, but the leak itself is unfixed) and refreshing `README.md`.
 
 ---
 
