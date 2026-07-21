@@ -68,4 +68,7 @@ logs/
 /security-council-report-summary.md
 /security-audit-report.md
 /health_check.txt
-!docs/audits/**
+# The 12 audit reports already archived under docs/audits/ stay tracked, but a
+# daily cron keeps dropping new PERF-AUDIT files there — ignore those so they
+# don't clutter git status. (Ignoring an already-tracked file is a no-op.)
+docs/audits/PERF-AUDIT-*.md
