@@ -1,31 +1,25 @@
-import { test, expect } from '@playwright/test';
-import { injectAuth } from '../helpers/auth';
-import { mockDataAPIs } from '../helpers/mocks';
+import { test, expect } from "@playwright/test";
+import { mockApi } from "../helpers/mocks";
+import { injectAuth } from "../helpers/auth";
 
-test.describe('Campaign Dashboard', () => {
-  test.beforeEach(async ({ page }) => {
-    await mockDataAPIs(page);
+test.describe("Campaign dashboard", () => {
+  test("renders overview stats for the campaign", async ({ page }) => {
+    await mockApi(page);
     await injectAuth(page);
+    await page.goto("/campaigns/campaign-1/dashboard");
+
+    await expect(page.getByRole("heading", { name: "Q1 Enterprise Outreach" })).toBeVisible();
+    await expect(page.getByText("Open rate")).toBeVisible();
+    // 0.6 open_rate renders as 60%.
+    await expect(page.getByText("60%")).toBeVisible();
   });
 
-  test('should display the campaigns list with mock data', async ({ page }) => {
-    await page.goto('/campaigns');
-    await page.waitForLoadState('networkidle');
+  test("offers the launch control while in review", async ({ page }) => {
+    await mockApi(page);
+    await injectAuth(page);
+    await page.goto("/campaigns/campaign-1/dashboard");
 
-    // Should show the heading
-    await expect(page.locator('h2:has-text("Campaigns")')).toBeVisible();
-
-    // Should show the campaign rows
-    await expect(page.locator('table tbody tr').first()).toBeVisible({ timeout: 10000 });
-
-    // Should show campaign name
-    await expect(page.locator('text=Q1 Enterprise Outreach')).toBeVisible();
-  });
-
-  test('should show the Create Campaign button', async ({ page }) => {
-    await page.goto('/campaigns');
-    await page.waitForLoadState('networkidle');
-
-    await expect(page.locator('button:has-text("Create Campaign")')).toBeVisible();
+    // MOCK campaign status is "review", so the Launch action is available.
+    await expect(page.getByRole("button", { name: "Launch" })).toBeVisible();
   });
 });
