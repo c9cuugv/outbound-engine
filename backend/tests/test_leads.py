@@ -440,6 +440,18 @@ class TestUpdateLead:
         )
         assert resp.status_code == 422
 
+    async def test_patch_lead_email_update_succeeds(
+        self, client: AsyncClient, auth_headers: dict
+    ):
+        lead = await create_lead(client, auth_headers, {"email": "old_email@test.com"})
+        resp = await client.patch(
+            f"/api/v1/leads/{lead['id']}",
+            json={"email": "new_email@test.com"},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 200
+        assert resp.json()["email"] == "new_email@test.com"
+
     async def test_patch_lead_unauthenticated_returns_401(self, client: AsyncClient):
         resp = await client.patch(
             f"/api/v1/leads/{uuid.uuid4()}", json={"title": "CEO"}
@@ -624,4 +636,27 @@ class TestTagValidation:
             headers=auth_headers,
         )
         assert resp.status_code == 201
+        assert resp.json()["tags"] == ["vip", "prospect"]
+
+    async def test_patch_lead_oversized_tag_returns_422(
+        self, client: AsyncClient, auth_headers: dict
+    ):
+        lead = await create_lead(client, auth_headers, {"email": "tag_patch_long@test.com"})
+        resp = await client.patch(
+            f"/api/v1/leads/{lead['id']}",
+            json={"tags": ["a" * 51]},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 422
+
+    async def test_patch_lead_duplicate_tags_deduplicated(
+        self, client: AsyncClient, auth_headers: dict
+    ):
+        lead = await create_lead(client, auth_headers, {"email": "tag_patch_dedup@test.com"})
+        resp = await client.patch(
+            f"/api/v1/leads/{lead['id']}",
+            json={"tags": ["vip", "vip", "prospect"]},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 200
         assert resp.json()["tags"] == ["vip", "prospect"]
