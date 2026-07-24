@@ -3,6 +3,7 @@ import {
   fetchCampaigns,
   fetchCampaign,
   createCampaign,
+  updateCampaign,
   fetchCampaignEmails,
   approveEmail,
   updateEmail,
@@ -14,7 +15,7 @@ import {
   regenerateEmail,
   generateCampaignEmails,
 } from "../api/campaigns";
-import type { CampaignWizardData } from "../types/campaign";
+import type { Campaign, CampaignWizardData } from "../types/campaign";
 
 function invalidateCampaignQueries(qc: ReturnType<typeof useQueryClient>, campaignId: string) {
   qc.invalidateQueries({ queryKey: ["campaign", campaignId] });
@@ -58,6 +59,20 @@ export function useCreateCampaign() {
   return useMutation({
     mutationFn: (data: CampaignWizardData) => createCampaign(data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["campaigns"] }),
+  });
+}
+
+export function useUpdateCampaign() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      payload,
+    }: {
+      id: string;
+      payload: Partial<Pick<Campaign, "sender_name" | "sending_window_start" | "sending_window_end">>;
+    }) => updateCampaign(id, payload),
+    onSuccess: (_data, { id }) => invalidateCampaignQueries(qc, id),
   });
 }
 

@@ -48,7 +48,14 @@ class CampaignUpdate(BaseModel):
     reply_to_email: EmailStr | None = None
     sending_timezone: str | None = None
     sending_days: list[str] | None = None
+    sending_window_start: time | None = None
+    sending_window_end: time | None = None
     max_emails_per_day: int | None = Field(None, ge=1, le=500)
+
+    @field_validator("sending_window_start", "sending_window_end", mode="before")
+    @classmethod
+    def coerce_time(cls, v: object) -> time | None:
+        return v if v is None else _parse_time(v)
 
 
 class CampaignResponse(BaseModel):
@@ -64,6 +71,8 @@ class CampaignResponse(BaseModel):
     reply_to_email: str | None = None
     sending_timezone: str
     sending_days: list[str]
+    sending_window_start: time
+    sending_window_end: time
     max_emails_per_day: int
     ab_test_enabled: bool
     status: str

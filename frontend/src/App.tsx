@@ -11,6 +11,7 @@ const EmailReviewQueue = lazy(() => import("./pages/EmailReviewQueue"));
 const CampaignDashboard = lazy(() => import("./pages/CampaignDashboard"));
 const LeadTimeline = lazy(() => import("./pages/LeadTimeline"));
 const QuickDraft = lazy(() => import("./pages/QuickDraft"));
+const Settings = lazy(() => import("./pages/Settings"));
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
   state: { error: Error | null } = { error: null };
@@ -95,6 +96,14 @@ export default function App() {
           element={
             <Page>
               <QuickDraft />
+            </Page>
+          }
+        />
+        <Route
+          path="/settings"
+          element={
+            <Page>
+              <Settings />
             </Page>
           }
         />

@@ -22,6 +22,14 @@ export async function createCampaign(payload: CampaignWizardData): Promise<Campa
   return data;
 }
 
+export async function updateCampaign(
+  campaignId: string,
+  payload: Partial<Pick<Campaign, "sender_name" | "sending_window_start" | "sending_window_end">>,
+): Promise<Campaign> {
+  const { data } = await api.patch(`/campaigns/${campaignId}`, payload);
+  return data;
+}
+
 export async function launchCampaign(campaignId: string): Promise<Campaign> {
   const { data } = await api.post(`/campaigns/${campaignId}/launch`);
   return data;

@@ -21,11 +21,11 @@ Status markers (the pipeline updates these — you don't have to):
 ## Queue
 
 <!-- Add tasks below this line. Example (delete once you add real ones): -->
-- [ ] Add a "Settings" page where the user can edit sender name and default sending window. Acceptance: form persists via the existing campaign fields; page reachable from the sidebar.
 
 ## Done
 
 <!-- The pipeline moves completed tasks here with their PR link. -->
+- [x] Add a "Settings" page where the user can edit sender name and default sending window. Acceptance: form persists via the existing campaign fields; page reachable from the sidebar. (`auto/settings-page`)
 
 ## Blocked
 

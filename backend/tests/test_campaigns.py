@@ -321,6 +321,25 @@ class TestUpdateCampaign:
         )
         assert resp.status_code == 404
 
+    async def test_patch_campaign_sender_name_and_sending_window(
+        self, client: AsyncClient, auth_headers: dict
+    ):
+        campaign = await create_campaign(client, auth_headers)
+        resp = await client.patch(
+            f"/api/v1/campaigns/{campaign['id']}",
+            json={
+                "sender_name": "Jordan Lee",
+                "sending_window_start": "08:30",
+                "sending_window_end": "18:00",
+            },
+            headers=auth_headers,
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["sender_name"] == "Jordan Lee"
+        assert body["sending_window_start"] == "08:30:00"
+        assert body["sending_window_end"] == "18:00:00"
+
 
 # ---------------------------------------------------------------------------
 # Campaign lifecycle
