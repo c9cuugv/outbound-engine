@@ -283,6 +283,10 @@ export async function mockApi(page: Page, overrides: MockOverrides = {}) {
     if (/\/campaigns\/[^/]+$/.test(path) && method === "GET") {
       return json(route, MOCK_CAMPAIGNS[0]);
     }
+    if (/\/campaigns\/[^/]+$/.test(path) && method === "PATCH") {
+      const updates = req.postDataJSON();
+      return json(route, { ...MOCK_CAMPAIGNS[0], ...updates });
+    }
 
     // ── Templates / lists ──
     if (path.endsWith("/templates") && method === "GET") {
