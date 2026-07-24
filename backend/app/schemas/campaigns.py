@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime, time
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 
 def _parse_time(v: object) -> time:
@@ -77,8 +77,7 @@ class CampaignResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TemplateCreate(BaseModel):
@@ -111,5 +110,4 @@ class TemplateResponse(BaseModel):
     days_delay: int
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

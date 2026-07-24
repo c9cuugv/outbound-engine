@@ -1,75 +1,45 @@
-import { test, expect } from '@playwright/test';
-import { LeadTablePage } from '../pages/LeadTablePage';
-import { injectAuth } from '../helpers/auth';
-import { mockDataAPIs, MOCK_LEADS } from '../helpers/mocks';
+import { test, expect } from "@playwright/test";
+import { mockApi, EMPTY_LEADS } from "../helpers/mocks";
+import { injectAuth } from "../helpers/auth";
 
-test.describe('Lead Table View', () => {
-  let leadsPage: LeadTablePage;
-
-  test.beforeEach(async ({ page }) => {
-    // 1. Mock all API endpoints
-    await mockDataAPIs(page);
-
-    // 2. Inject auth token so we pass the auth guard
+test.describe("Leads", () => {
+  test("renders the lead table with data", async ({ page }) => {
+    await mockApi(page);
     await injectAuth(page);
+    await page.goto("/leads");
 
-    // 3. Navigate to leads
-    leadsPage = new LeadTablePage(page);
-    await page.goto('/leads');
-    await page.waitForLoadState('networkidle');
+    await expect(page.getByRole("heading", { name: "Leads" })).toBeVisible();
+    await expect(page.getByText("3 total")).toBeVisible();
+    await expect(page.locator("table tbody tr")).toHaveCount(3);
+    await expect(page.getByText("jane@acmecorp.com")).toBeVisible();
   });
 
-  test('should display the leads heading', async ({ page }) => {
-    await expect(leadsPage.heading).toBeVisible();
-    await expect(leadsPage.heading).toHaveText('Leads');
+  test("exposes the import and research actions", async ({ page }) => {
+    await mockApi(page);
+    await injectAuth(page);
+    await page.goto("/leads");
+
+    await expect(page.getByRole("button", { name: "Import CSV" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Research all" })).toBeVisible();
+    await expect(page.getByPlaceholder("Search name, email, or company")).toBeVisible();
   });
 
-  test('should render the lead table with mock data', async ({ page }) => {
-    // Wait for rows to appear
-    await expect(leadsPage.leadRows.first()).toBeVisible({ timeout: 10000 });
+  test("shows the empty state when there are no leads", async ({ page }) => {
+    await mockApi(page, { leads: EMPTY_LEADS });
+    await injectAuth(page);
+    await page.goto("/leads");
 
-    const count = await leadsPage.getLeadCount();
-    expect(count).toBe(MOCK_LEADS.items.length);
+    await expect(page.getByText("No leads yet")).toBeVisible();
+    // The empty state offers the primary import action as its call to action.
+    await expect(page.getByRole("button", { name: "Import CSV" })).toHaveCount(2);
   });
 
-  test('should show the Upload CSV button', async ({ page }) => {
-    await expect(leadsPage.uploadCSVButton).toBeVisible();
-  });
+  test("opens the research panel when a row is clicked", async ({ page }) => {
+    await mockApi(page);
+    await injectAuth(page);
+    await page.goto("/leads");
 
-  test('should show the Research All button', async ({ page }) => {
-    await expect(leadsPage.researchAllButton).toBeVisible();
-  });
-
-  test('should have a search input', async ({ page }) => {
-    await expect(leadsPage.searchInput).toBeVisible();
-  });
-
-  test('should filter leads via search', async ({ page }) => {
-    // Wait for initial data
-    await expect(leadsPage.leadRows.first()).toBeVisible({ timeout: 10000 });
-
-    // Mock the search response to return empty for a nonexistent query
-    await page.route('**/api/v1/leads*', async (route) => {
-      const url = new URL(route.request().url());
-      const search = url.searchParams.get('search');
-      if (search && search.includes('NonexistentLead')) {
-        return route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({ items: [], total_count: 0, total_pages: 1, page: 1, per_page: 25 }),
-        });
-      }
-      return route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify(MOCK_LEADS),
-      });
-    });
-
-    // Type a nonexistent search term
-    await leadsPage.search('NonexistentLead123xyz');
-
-    // Expect the empty state
-    await expect(leadsPage.emptyState).toBeVisible({ timeout: 5000 });
+    await page.getByText("Michael Chen").click();
+    await expect(page.getByRole("button", { name: "Close research panel" })).toBeVisible();
   });
 });

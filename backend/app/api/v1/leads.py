@@ -1,5 +1,6 @@
 import math
 import uuid
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, status
 from sqlalchemy.exc import IntegrityError
@@ -44,7 +45,7 @@ async def create_lead_endpoint(
 async def list_leads(
     page: int = Query(1, ge=1),
     per_page: int = Query(50, ge=1, le=200),
-    sort: str = Query("created_at"),
+    sort: Literal["created_at", "updated_at", "email", "first_name", "last_name", "company_name", "status"] = Query("created_at"),
     order: str = Query("desc", pattern="^(asc|desc)$"),
     status_filter: str | None = Query(None, alias="status"),
     research_status: str | None = Query(None),

@@ -43,7 +43,7 @@ async def import_leads_from_csv(
     reader = csv.DictReader(io.StringIO(text))
 
     # Get existing emails in one query (for dedup)
-    result = await db.execute(select(Lead.email))
+    result = await db.execute(select(Lead.email).where(Lead.owner_id == owner_id))
     existing_emails = {row[0].lower() for row in result.all()}
 
     for row_num, row in enumerate(reader, start=2):  # row 1 is header

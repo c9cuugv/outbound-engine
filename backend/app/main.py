@@ -18,6 +18,7 @@ from app.api.v1.tracking import router as tracking_router
 from app.api.v1.analytics import router as analytics_router
 from app.api.v1.websocket import router as websocket_router
 from app.api.v1.demo import router as demo_router
+from app.api.v1.quick_draft import router as quick_draft_router
 
 # ── Rate limiter ──
 limiter = Limiter(key_func=get_remote_address)
@@ -68,6 +69,7 @@ app.include_router(tracking_router)
 app.include_router(analytics_router)
 app.include_router(websocket_router)
 app.include_router(demo_router)
+app.include_router(quick_draft_router)
 
 
 @app.get("/", include_in_schema=False)

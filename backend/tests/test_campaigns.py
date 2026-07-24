@@ -123,6 +123,26 @@ class TestCreateCampaign:
         )
         assert resp.status_code == 422
 
+    async def test_create_campaign_max_emails_per_day_exceeds_limit_returns_422(
+        self, client: AsyncClient, auth_headers: dict
+    ):
+        resp = await client.post(
+            "/api/v1/campaigns",
+            json={**CAMPAIGN_PAYLOAD, "max_emails_per_day": 501, "name": "Over Limit"},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 422
+
+    async def test_create_campaign_oversized_name_returns_422(
+        self, client: AsyncClient, auth_headers: dict
+    ):
+        resp = await client.post(
+            "/api/v1/campaigns",
+            json={**CAMPAIGN_PAYLOAD, "name": "X" * 256},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 422
+
 
 # ---------------------------------------------------------------------------
 # List campaigns
@@ -150,6 +170,16 @@ class TestListCampaigns:
         await create_campaign(client, auth_headers)
         resp = await client.get("/api/v1/campaigns", headers=second_headers)
         assert resp.json() == []
+
+    async def test_list_filter_by_status_returns_only_matching(
+        self, client: AsyncClient, auth_headers: dict
+    ):
+        await create_campaign(client, auth_headers)
+        await create_campaign(client, auth_headers, overrides={"name": "Second Camp"})
+        draft_resp = await client.get("/api/v1/campaigns?status=draft", headers=auth_headers)
+        assert all(c["status"] == "draft" for c in draft_resp.json())
+        active_resp = await client.get("/api/v1/campaigns?status=active", headers=auth_headers)
+        assert active_resp.json() == []
 
 
 # ---------------------------------------------------------------------------
@@ -239,6 +269,58 @@ class TestUpdateCampaign:
         )
         assert resp.status_code == 404
 
+    async def test_patch_campaign_invalid_sender_email_returns_422(
+        self, client: AsyncClient, auth_headers: dict
+    ):
+        campaign = await create_campaign(client, auth_headers)
+        resp = await client.patch(
+            f"/api/v1/campaigns/{campaign['id']}",
+            json={"sender_email": "not-an-email"},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 422
+
+    async def test_patch_campaign_max_emails_per_day_zero_returns_422(
+        self, client: AsyncClient, auth_headers: dict
+    ):
+        campaign = await create_campaign(client, auth_headers)
+        resp = await client.patch(
+            f"/api/v1/campaigns/{campaign['id']}",
+            json={"max_emails_per_day": 0},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 422
+
+    async def test_patch_campaign_max_emails_per_day_exceeds_limit_returns_422(
+        self, client: AsyncClient, auth_headers: dict
+    ):
+        campaign = await create_campaign(client, auth_headers)
+        resp = await client.patch(
+            f"/api/v1/campaigns/{campaign['id']}",
+            json={"max_emails_per_day": 501},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 422
+
+    async def test_patch_campaign_unauthenticated_returns_401(self, client: AsyncClient):
+        resp = await client.patch(
+            f"/api/v1/campaigns/{uuid.uuid4()}",
+            json={"name": "X"},
+        )
+        assert resp.status_code == 401
+
+    async def test_patch_campaign_owned_by_other_user_returns_404(
+        self, client: AsyncClient, auth_headers: dict, second_user
+    ):
+        campaign = await create_campaign(client, auth_headers)
+        _, second_headers = second_user
+        resp = await client.patch(
+            f"/api/v1/campaigns/{campaign['id']}",
+            json={"name": "Stolen"},
+            headers=second_headers,
+        )
+        assert resp.status_code == 404
+
 
 # ---------------------------------------------------------------------------
 # Campaign lifecycle
@@ -287,6 +369,91 @@ class TestCampaignLifecycle:
 
         assert resp.status_code == 200
         assert resp.json()["status"] == "active"
+
+    async def test_pause_draft_campaign_returns_400(
+        self, client: AsyncClient, auth_headers: dict
+    ):
+        campaign = await create_campaign(client, auth_headers)
+        resp = await client.post(
+            f"/api/v1/campaigns/{campaign['id']}/pause", headers=auth_headers
+        )
+        assert resp.status_code == 400
+
+    async def test_launch_unauthenticated_returns_401(self, client: AsyncClient):
+        resp = await client.post(f"/api/v1/campaigns/{uuid.uuid4()}/launch")
+        assert resp.status_code == 401
+
+    async def test_pause_unauthenticated_returns_401(self, client: AsyncClient):
+        resp = await client.post(f"/api/v1/campaigns/{uuid.uuid4()}/pause")
+        assert resp.status_code == 401
+
+    async def test_resume_unauthenticated_returns_401(self, client: AsyncClient):
+        resp = await client.post(f"/api/v1/campaigns/{uuid.uuid4()}/resume")
+        assert resp.status_code == 401
+
+    async def test_launch_already_active_campaign_returns_400(
+        self, client: AsyncClient, auth_headers: dict
+    ):
+        campaign = await create_campaign(client, auth_headers)
+        await client.post(f"/api/v1/campaigns/{campaign['id']}/launch", headers=auth_headers)
+        resp = await client.post(
+            f"/api/v1/campaigns/{campaign['id']}/launch", headers=auth_headers
+        )
+        assert resp.status_code == 400
+
+    async def test_resume_draft_campaign_returns_400(
+        self, client: AsyncClient, auth_headers: dict
+    ):
+        campaign = await create_campaign(client, auth_headers)
+        resp = await client.post(
+            f"/api/v1/campaigns/{campaign['id']}/resume", headers=auth_headers
+        )
+        assert resp.status_code == 400
+
+    async def test_launch_nonexistent_campaign_returns_404(
+        self, client: AsyncClient, auth_headers: dict
+    ):
+        resp = await client.post(
+            f"/api/v1/campaigns/{uuid.uuid4()}/launch", headers=auth_headers
+        )
+        assert resp.status_code == 404
+
+    async def test_pause_nonexistent_campaign_returns_404(
+        self, client: AsyncClient, auth_headers: dict
+    ):
+        resp = await client.post(
+            f"/api/v1/campaigns/{uuid.uuid4()}/pause", headers=auth_headers
+        )
+        assert resp.status_code == 404
+
+    async def test_resume_nonexistent_campaign_returns_404(
+        self, client: AsyncClient, auth_headers: dict
+    ):
+        resp = await client.post(
+            f"/api/v1/campaigns/{uuid.uuid4()}/resume", headers=auth_headers
+        )
+        assert resp.status_code == 404
+
+    async def test_launch_campaign_owned_by_another_user_returns_404(
+        self, client: AsyncClient, auth_headers: dict, second_user
+    ):
+        campaign = await create_campaign(client, auth_headers)
+        _, second_headers = second_user
+        resp = await client.post(
+            f"/api/v1/campaigns/{campaign['id']}/launch", headers=second_headers
+        )
+        assert resp.status_code == 404
+
+    async def test_pause_campaign_owned_by_another_user_returns_404(
+        self, client: AsyncClient, auth_headers: dict, second_user
+    ):
+        campaign = await create_campaign(client, auth_headers)
+        await client.post(f"/api/v1/campaigns/{campaign['id']}/launch", headers=auth_headers)
+        _, second_headers = second_user
+        resp = await client.post(
+            f"/api/v1/campaigns/{campaign['id']}/pause", headers=second_headers
+        )
+        assert resp.status_code == 404
 
 
 # ---------------------------------------------------------------------------
@@ -338,3 +505,32 @@ class TestTemplates:
     async def test_create_template_unauthenticated_returns_401(self, client: AsyncClient):
         resp = await client.post("/api/v1/templates", json=TEMPLATE_PAYLOAD)
         assert resp.status_code == 401
+
+    async def test_templates_isolated_between_users(
+        self, client: AsyncClient, auth_headers: dict, second_user
+    ):
+        _, second_headers = second_user
+        await create_template(client, auth_headers)
+        resp = await client.get("/api/v1/templates", headers=second_headers)
+        assert resp.status_code == 200
+        assert resp.json() == []
+
+    async def test_patch_nonexistent_template_returns_404(
+        self, client: AsyncClient, auth_headers: dict
+    ):
+        resp = await client.patch(
+            f"/api/v1/templates/{uuid.uuid4()}",
+            json={"name": "Ghost"},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 404
+
+    async def test_create_template_missing_required_fields_returns_422(
+        self, client: AsyncClient, auth_headers: dict
+    ):
+        resp = await client.post(
+            "/api/v1/templates",
+            json={"name": "No prompt"},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 422

@@ -1,53 +1,84 @@
 import type { ReactNode } from "react";
+import type { LeadStatus, ResearchStatus } from "../../types/lead";
+import type { CampaignStatus, EmailStatus } from "../../types/campaign";
 
-type Variant = "gray" | "yellow" | "green" | "red" | "orange" | "info" | "accent";
+export type Tone = "neutral" | "success" | "warning" | "danger" | "info";
 
-const VARIANT_CLASSES: Record<Variant, string> = {
-  gray: "bg-[var(--color-badge-gray)] text-gray-300",
-  yellow: "bg-[var(--color-badge-yellow)] text-amber-300",
-  green: "bg-[var(--color-badge-green)] text-emerald-300",
-  red: "bg-[var(--color-badge-red)] text-red-300",
-  orange: "bg-[var(--color-badge-orange)] text-orange-300",
-  info: "bg-[var(--color-info-dim)] text-blue-400",
-  accent: "bg-[var(--color-accent-dim)] text-[var(--color-accent)]",
+const TONES: Record<Tone, string> = {
+  neutral: "bg-raised text-ink-muted border-line",
+  success: "bg-success-soft text-success border-success/25",
+  warning: "bg-warning-soft text-warning border-warning/25",
+  danger: "bg-danger-soft text-danger border-danger/25",
+  info: "bg-info-soft text-info border-info/25",
 };
 
-interface BadgeProps {
-  variant?: Variant;
-  children: ReactNode;
-  className?: string;
-}
-
-export default function Badge({ variant = "gray", children, className = "" }: BadgeProps) {
+/*
+ * Status is never encoded by colour alone — every badge renders a text label.
+ * These states drive real sending decisions, so they have to survive both
+ * colour-blindness and a greyscale screenshot.
+ */
+export function Badge({ tone = "neutral", children }: { tone?: Tone; children: ReactNode }) {
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold tracking-wide uppercase ${VARIANT_CLASSES[variant]} ${className}`}
+      className={`inline-flex items-center whitespace-nowrap rounded border px-1.5 py-0.5 text-[11px] font-semibold leading-4 ${TONES[tone]}`}
     >
       {children}
     </span>
   );
 }
 
-/** Map research/lead statuses to badge variants */
-export function statusVariant(
-  status: string,
-): Variant {
-  const map: Record<string, Variant> = {
-    pending: "gray",
-    new: "gray",
-    draft: "gray",
-    in_progress: "yellow",
-    generating: "yellow",
-    completed: "green",
-    active: "green",
-    approved: "green",
-    sent: "info",
-    failed: "red",
-    bounced: "red",
-    needs_review: "orange",
-    review: "orange",
-    paused: "yellow",
-    replied: "accent",
-  };
-  return map[status] ?? "gray";
-}
+const LEAD_TONES: Record<LeadStatus, Tone> = {
+  new: "neutral",
+  researched: "info",
+  in_sequence: "info",
+  completed: "success",
+  bounced: "danger",
+  unsubscribed: "danger",
+};
+
+const RESEARCH_TONES: Record<ResearchStatus, Tone> = {
+  pending: "neutral",
+  in_progress: "info",
+  completed: "success",
+  failed: "danger",
+  needs_review: "warning",
+};
+
+const CAMPAIGN_TONES: Record<CampaignStatus, Tone> = {
+  draft: "neutral",
+  generating: "info",
+  review: "warning",
+  active: "success",
+  paused: "warning",
+  completed: "neutral",
+};
+
+const EMAIL_TONES: Record<EmailStatus, Tone> = {
+  draft: "neutral",
+  approved: "info",
+  scheduled: "info",
+  sent: "success",
+  opened: "success",
+  clicked: "success",
+  replied: "success",
+  bounced: "danger",
+  failed: "danger",
+};
+
+const label = (s: string) => s.replace(/_/g, " ");
+
+export const LeadStatusBadge = ({ status }: { status: LeadStatus }) => (
+  <Badge tone={LEAD_TONES[status] ?? "neutral"}>{label(status)}</Badge>
+);
+
+export const ResearchStatusBadge = ({ status }: { status: ResearchStatus }) => (
+  <Badge tone={RESEARCH_TONES[status] ?? "neutral"}>{label(status)}</Badge>
+);
+
+export const CampaignStatusBadge = ({ status }: { status: CampaignStatus }) => (
+  <Badge tone={CAMPAIGN_TONES[status] ?? "neutral"}>{label(status)}</Badge>
+);
+
+export const EmailStatusBadge = ({ status }: { status: EmailStatus }) => (
+  <Badge tone={EMAIL_TONES[status] ?? "neutral"}>{label(status)}</Badge>
+);

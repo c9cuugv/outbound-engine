@@ -1,80 +1,63 @@
-import { test, expect } from '@playwright/test';
-import { AuthPage } from '../pages/AuthPage';
-import { mockAuthAPI } from '../helpers/auth';
+import { test, expect } from "@playwright/test";
+import { mockApi } from "../helpers/mocks";
 
-test.describe('Authentication', () => {
-  test('should display the login form with Sign In button', async ({ page }) => {
-    const authPage = new AuthPage(page);
-    await authPage.goto();
+test.describe("Authentication", () => {
+  test("shows the sign-in form", async ({ page }) => {
+    await mockApi(page);
+    await page.goto("/login");
 
-    await expect(authPage.emailInput).toBeVisible();
-    await expect(authPage.passwordInput).toBeVisible();
-    await expect(authPage.loginButton).toBeVisible();
-    await expect(authPage.loginButton).toHaveText('Sign In');
+    await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Sign in" })).toBeVisible();
   });
 
-  test('should login successfully with mocked API', async ({ page }) => {
-    // Mock the auth endpoint so login succeeds
-    await mockAuthAPI(page);
+  test("signs in and lands on leads", async ({ page }) => {
+    await mockApi(page);
+    await page.goto("/login");
 
-    const authPage = new AuthPage(page);
-    await authPage.goto();
-    await authPage.login('test@example.com', 'password');
+    await page.getByPlaceholder("you@company.com").fill("test@example.com");
+    await page.getByPlaceholder("••••••••").fill("password123");
+    await page.getByRole("button", { name: "Sign in" }).click();
 
-    // Should be redirected to leads page
-    await expect(page).toHaveURL(/.*\/leads/);
+    await expect(page).toHaveURL(/\/leads/);
+    await expect(page.getByRole("heading", { name: "Leads" })).toBeVisible();
   });
 
-  test('should show validation errors for empty fields', async ({ page }) => {
-    const authPage = new AuthPage(page);
-    await authPage.goto();
+  test("required fields block submit and stay on /login", async ({ page }) => {
+    await mockApi(page);
+    await page.goto("/login");
 
-    // Click submit without filling in anything — HTML5 required validation
-    await authPage.loginButton.click();
-
-    // Should NOT navigate away from /login
-    await expect(page).toHaveURL(/.*\/login/);
+    await page.getByRole("button", { name: "Sign in" }).click();
+    await expect(page).toHaveURL(/\/login/);
   });
 
-  test('should toggle between login and register modes', async ({ page }) => {
-    const authPage = new AuthPage(page);
-    await authPage.goto();
+  test("toggles to register mode and back", async ({ page }) => {
+    await mockApi(page);
+    await page.goto("/login");
 
-    // Initially in login mode
-    await expect(authPage.loginButton).toHaveText('Sign In');
+    await page.getByRole("button", { name: "Create one" }).click();
+    await expect(page.getByRole("heading", { name: "Create an account" })).toBeVisible();
+    await expect(page.getByPlaceholder("Alex Rivera")).toBeVisible();
 
-    // Switch to register — use the footer "Register" link (more reliable)
-    await page.getByRole('button', { name: 'Register', exact: true }).click();
-    await expect(authPage.loginButton).toHaveText('Create Account');
-    await expect(authPage.nameInput).toBeVisible();
-
-    // Switch back to login — use the footer "Sign in" link
-    await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-    await expect(authPage.loginButton).toHaveText('Sign In');
+    // In register mode the only "Sign in" button is the toggle back to login.
+    await page.getByRole("button", { name: "Sign in" }).click();
+    await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
   });
 
-  test('should show error message on failed login', async ({ page }) => {
-    // Mock the auth endpoint to return 401
-    await page.route('**/api/v1/auth/login', async (route) => {
-      await route.fulfill({
+  test("surfaces the API error message on failed sign-in", async ({ page }) => {
+    await page.route("**/api/v1/auth/login", (route) =>
+      route.fulfill({
         status: 401,
-        contentType: 'application/json',
-        body: JSON.stringify({ detail: 'Invalid credentials' }),
-      });
-    });
+        contentType: "application/json",
+        body: JSON.stringify({ detail: "Invalid credentials" }),
+      }),
+    );
 
-    const authPage = new AuthPage(page);
-    await authPage.goto();
+    await page.goto("/login");
+    await page.getByPlaceholder("you@company.com").fill("wrong@test.com");
+    await page.getByPlaceholder("••••••••").fill("badpassword");
+    await page.getByRole("button", { name: "Sign in" }).click();
 
-    await authPage.emailInput.fill('wrong@test.com');
-    await authPage.passwordInput.fill('badpassword');
-    await authPage.loginButton.click();
-
-    // Wait for the error message — locate by the actual text content
-    const errorText = page.getByText('Invalid credentials');
-    await expect(errorText).toBeVisible({ timeout: 10000 });
-
-    // Should stay on login page
-    await expect(page).toHaveURL(/.*\/login/);
+    await expect(page.getByRole("alert")).toContainText("Invalid credentials");
+    await expect(page).toHaveURL(/\/login/);
   });
 });

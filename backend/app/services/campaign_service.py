@@ -27,14 +27,13 @@ async def get_campaign_by_id(
 
 
 async def get_campaigns(
-    db: AsyncSession, owner_id: uuid.UUID, limit: int = 50, offset: int = 0
+    db: AsyncSession, owner_id: uuid.UUID, limit: int = 50, offset: int = 0, status: str | None = None
 ) -> list[Campaign]:
+    query = select(Campaign).where(Campaign.owner_id == owner_id)
+    if status is not None:
+        query = query.where(Campaign.status == status)
     result = await db.execute(
-        select(Campaign)
-        .where(Campaign.owner_id == owner_id)
-        .order_by(Campaign.created_at.desc())
-        .limit(limit)
-        .offset(offset)
+        query.order_by(Campaign.created_at.desc()).limit(limit).offset(offset)
     )
     return list(result.scalars().all())
 

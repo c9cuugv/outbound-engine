@@ -3,6 +3,7 @@
 *.env.local
 *.env.production
 secrets/
+proxy.token
 
 # Python
 __pycache__/
@@ -20,46 +21,54 @@ build/
 
 # Node / Frontend
 node_modules/
-frontend/node_modules/
 frontend/dist/
 frontend/.vite/
 *.tsbuildinfo
+
+# Test artifacts — generated, never committed
+frontend/playwright-report/
+frontend/test-results/
+frontend/playwright-results.json
+frontend/playwright-results.xml
+playwright-transform-cache-*/
+# E2E specs generate these; they must be cleaned up by the specs themselves
+**/temp_lead_*.csv
 
 # Docker volumes & overrides
 docker-compose.override.yml
 
 # OS
-.DS_Store
+**/.DS_Store
 Thumbs.db
 
 # Editor
-.vscode/settings.json
+.vscode/
 .idea/
 *.swp
 *.swo
 
-# Logs & QA screenshots
+# Logs
 *.log
 logs/
-logs/*.png
-logs/*.jpg
-logs/*.jpeg
 
-#planning
+# Agent / tooling scratch
 .gemini/
 .superpowers/
 .planning/
 .playwright-mcp/
-.vscode/
-.playwright-mcp/
+.hermes/
+.kiro/
+.claude/worktrees/
 
-#Report
-council-report-20260519.html
-council-transcript-20260519.md
-security-council-report-summary.md
-security-audit-report.md
-
-
-#DOCS
-NOT_WORKING.md
-
+# Generated audit reports — ignored at root, but kept once archived under docs/audits/
+/PERF-AUDIT-*.md
+/AUDIT-SPEC.md
+/council-report-*.html
+/council-transcript-*.md
+/security-council-report-summary.md
+/security-audit-report.md
+/health_check.txt
+# The 12 audit reports already archived under docs/audits/ stay tracked, but a
+# daily cron keeps dropping new PERF-AUDIT files there — ignore those so they
+# don't clutter git status. (Ignoring an already-tracked file is a no-op.)
+docs/audits/PERF-AUDIT-*.md

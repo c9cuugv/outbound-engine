@@ -166,12 +166,15 @@ class NvidiaProvider(AIProvider):
     Default model: meta/llama-3.1-70b-instruct (free tier available).
     Other options: nvidia/llama-3.1-nemotron-70b-instruct, mistralai/mixtral-8x7b-instruct-v0.1
     Get API key: https://build.nvidia.com
+
+    Also works with any OpenAI-compatible proxy (e.g. localhost:3001/v1)
+    by setting NVIDIA_BASE_URL in .env.
     """
 
-    NVIDIA_BASE_URL = "https://integrate.api.nvidia.com/v1"
+    DEFAULT_BASE_URL = "https://integrate.api.nvidia.com/v1"
     DEFAULT_MODEL = "meta/llama-3.1-70b-instruct"
 
-    def __init__(self, api_key: str, model: str | None = None):
+    def __init__(self, api_key: str, model: str | None = None, base_url: str | None = None):
         try:
             from openai import AsyncOpenAI
         except ImportError:
@@ -180,12 +183,17 @@ class NvidiaProvider(AIProvider):
                 "Install with: pip install openai"
             )
 
-        self.model = model or self.DEFAULT_MODEL
+        from app.config import settings
+
+        self.model = model or settings.NVIDIA_MODEL or self.DEFAULT_MODEL
+        resolved_base_url = base_url or settings.NVIDIA_BASE_URL or self.DEFAULT_BASE_URL
         self.client = AsyncOpenAI(
             api_key=api_key,
-            base_url=self.NVIDIA_BASE_URL,
+            base_url=resolved_base_url,
+            timeout=30.0,
+            max_retries=0,
         )
-        logger.info("NvidiaProvider initialized with model %s", self.model)
+        logger.info("NvidiaProvider initialized with model %s at %s", self.model, resolved_base_url)
 
     async def generate(self, system_prompt: str, user_prompt: str) -> str:
         response = await self.client.chat.completions.create(

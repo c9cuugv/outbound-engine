@@ -1,51 +1,48 @@
 import type { ButtonHTMLAttributes, ReactNode } from "react";
-import { Loader2 } from "lucide-react";
 
 type Variant = "primary" | "secondary" | "ghost" | "danger";
-type Size = "sm" | "md" | "lg";
+type Size = "sm" | "md";
 
-const VARIANT_CLASSES: Record<Variant, string> = {
-  primary:
-    "bg-[var(--color-accent)] text-[var(--color-surface-0)] font-semibold hover:bg-[var(--color-accent-hover)] active:scale-[0.97]",
-  secondary:
-    "bg-white/[0.06] text-[var(--color-ink-primary)] border border-white/[0.08] hover:bg-white/[0.1]",
-  ghost:
-    "text-[var(--color-ink-secondary)] hover:text-[var(--color-ink-primary)] hover:bg-white/[0.04]",
-  danger:
-    "bg-[var(--color-danger-dim)] text-[var(--color-danger)] border border-[var(--color-danger)]/20 hover:bg-[var(--color-danger)]/20",
+const VARIANTS: Record<Variant, string> = {
+  primary: "bg-accent text-on-accent hover:bg-accent-hover font-semibold",
+  secondary: "bg-raised text-ink border border-line hover:border-line-strong",
+  ghost: "text-ink-muted hover:text-ink hover:bg-raised",
+  danger: "bg-danger-soft text-danger border border-danger/30 hover:bg-danger/20",
 };
 
-const SIZE_CLASSES: Record<Size, string> = {
-  sm: "h-8 px-3 text-[12px] gap-1.5 rounded",
-  md: "h-9 px-4 text-[13px] gap-2 rounded-md",
-  lg: "h-11 px-6 text-[14px] gap-2.5 rounded-md",
+const SIZES: Record<Size, string> = {
+  sm: "h-7 px-2.5 text-[13px] gap-1.5",
+  md: "h-9 px-3.5 text-[14px] gap-2",
 };
 
-interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant;
   size?: Size;
   loading?: boolean;
-  icon?: ReactNode;
   children: ReactNode;
 }
 
 export default function Button({
-  variant = "primary",
+  variant = "secondary",
   size = "md",
   loading = false,
-  icon,
-  children,
   disabled,
   className = "",
-  ...props
-}: ButtonProps) {
+  children,
+  ...rest
+}: Props) {
   return (
     <button
-      className={`inline-flex items-center justify-center font-medium transition-all disabled:pointer-events-none disabled:opacity-40 ${VARIANT_CLASSES[variant]} ${SIZE_CLASSES[size]} ${className}`}
       disabled={disabled || loading}
-      {...props}
+      className={`inline-flex items-center justify-center rounded-md transition-colors duration-150 disabled:opacity-45 disabled:pointer-events-none ${VARIANTS[variant]} ${SIZES[size]} ${className}`}
+      {...rest}
     >
-      {loading ? <Loader2 size={14} className="animate-spin" /> : icon}
+      {loading && (
+        <span
+          aria-hidden
+          className="h-3.5 w-3.5 shrink-0 animate-spin rounded-full border-2 border-current border-t-transparent"
+        />
+      )}
       {children}
     </button>
   );

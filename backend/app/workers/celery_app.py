@@ -1,6 +1,7 @@
 from celery import Celery
 from celery.signals import worker_process_init
 from app.config import settings
+import app.models
 
 celery_app = Celery(
     "outbound_engine",
@@ -28,10 +29,14 @@ def reset_db_pool(**kwargs):
 
 
 celery_app.conf.update(
-    task_serializer="json",
-    accept_content=["json"],
-    result_serializer="json",
-    timezone="UTC",
-    enable_utc=True,
-    beat_schedule={},
+ task_serializer="json",
+ accept_content=["json"],
+ result_serializer="json",
+ timezone="UTC",
+ enable_utc=True,
+ broker_connection_retry=False,
+ broker_connection_retry_on_startup=True,
+ beat_schedule={},
+ result_expires=3600,
+ worker_max_memory_per_child=90000,
 )
