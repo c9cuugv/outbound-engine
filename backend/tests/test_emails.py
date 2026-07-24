@@ -309,3 +309,23 @@ class TestApproveAllEmails:
         )
         assert resp.status_code == 404
 
+
+class TestEmailReviewAuth:
+    async def test_edit_email_unauthenticated_returns_401(self, client: AsyncClient):
+        resp = await client.patch(
+            f"/api/v1/campaigns/{uuid.uuid4()}/emails/{uuid.uuid4()}",
+            json={"subject": "X"},
+        )
+        assert resp.status_code == 401
+
+    async def test_approve_email_unauthenticated_returns_401(self, client: AsyncClient):
+        resp = await client.post(
+            f"/api/v1/campaigns/{uuid.uuid4()}/emails/{uuid.uuid4()}/approve"
+        )
+        assert resp.status_code == 401
+
+    async def test_approve_all_emails_unauthenticated_returns_401(self, client: AsyncClient):
+        resp = await client.post(
+            f"/api/v1/campaigns/{uuid.uuid4()}/emails/approve-all"
+        )
+        assert resp.status_code == 401
