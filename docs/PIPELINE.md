@@ -31,12 +31,20 @@ scheduled routine's prompt is: *"Follow docs/PIPELINE.md exactly."*
    ```
    The `backend/pytest.ini` per-test `timeout=60` means a hang fails fast and
    named — treat any timeout as a red gate to fix, never to skip.
-5. **Deliver.**
-   - **All green** → commit, push `auto/<slug>`, open a PR, **auto-merge** it into
-     `main` (squash), move the task to **Done** in `BACKLOG.md` with the PR link.
-   - **Still red after 3 fix attempts** → stop. Push the branch, open a PR left
-     open (do not merge), move the task to **Blocked** in `BACKLOG.md` with a
-     one-line reason, and append the failure detail to `docs/PIPELINE-LOG.md`.
+5. **Deliver.** (Delivery is via git while `gh` is unauthenticated — see
+   *GitHub auth* below. The gate, not the merge mechanism, is what protects
+   `main`.)
+   - **All green** → commit on `auto/<slug>`, push it, then check out `main`,
+     fast-forward to `origin/main`, `git merge --no-ff auto/<slug>` (a single
+     revertable merge commit), and `git push origin main`. Move the task to
+     **Done** in `BACKLOG.md` with the branch name.
+   - **Still red after 3 fix attempts** → stop. Push `auto/<slug>` (never merge
+     it), move the task to **Blocked** in `BACKLOG.md` with a one-line reason,
+     and append the failure detail to `docs/PIPELINE-LOG.md`. Leave `main`
+     untouched.
+   - Before merging, re-run the gate on the merged result if `main` advanced
+     since the branch was cut; a green branch that goes red after merge must not
+     land.
 6. **Log.** Append one line to `docs/PIPELINE-LOG.md`: date, task, outcome, PR.
 7. Exit. The next scheduled run takes the next task.
 
@@ -62,8 +70,23 @@ scheduled routine's prompt is: *"Follow docs/PIPELINE.md exactly."*
 - Check **Blocked** in the backlog if something stalls — each has a reason and a
   branch you can pick up.
 
+## GitHub auth (upgrade path)
+
+Right now the local runner has no `gh` auth, so delivery uses gated git merges
+over SSH (branch → green gate → `--no-ff` merge to `main`). This is equivalently
+safe: work is isolated on a branch, only a green gate reaches `main`, and each
+landing is one revertable merge commit. Once you run `gh auth login` (or set
+`GH_TOKEN`), the **Deliver** step should be switched to: open a PR and enable
+GitHub auto-merge so the merge also runs through branch protection / CI checks.
+
+## Cadence
+
+Runs every 4 hours (`0 */4 * * *`, local time) while the Claude app is open; a
+run due while the app was closed fires on next launch. Change it by asking to
+reschedule the `outbound-feature-pipeline` task, or pause it anytime.
+
 ## First run
 
-Watch the first scheduled run once to confirm the environment can install deps
-and run the gate (backend venv, `npm ci`, `npx playwright install`). After that
-it is hands-off.
+Watch the first scheduled run once to confirm the environment can run the gate
+(backend venv present, `npm ci`, `npx playwright install`). After that it is
+hands-off. If the backlog is empty it exits immediately — safe to leave armed.
