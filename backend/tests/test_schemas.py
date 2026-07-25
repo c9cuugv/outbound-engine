@@ -9,6 +9,7 @@ import pytest
 from pydantic import ValidationError
 
 from app.ai.schemas import EmailOutput, ResearchOutput, SentimentOutput
+from app.schemas.leads import LeadCreate, LeadUpdate
 
 # ---------------------------------------------------------------------------
 # Fixtures — valid data factories
@@ -258,3 +259,70 @@ class TestSentimentOutput:
     def test_confidence_zero(self):
         result = SentimentOutput(**valid_sentiment_data(confidence=0.0))
         assert result.confidence == 0.0
+
+
+# ===========================================================================
+# LeadCreate / LeadUpdate schema unit tests
+# ===========================================================================
+
+_LEAD_BASE = {
+    "first_name": "Alice",
+    "last_name": "Smith",
+    "email": "alice@acme.com",
+}
+
+
+class TestLeadCreateSchema:
+    def test_valid_minimal(self):
+        lead = LeadCreate(**_LEAD_BASE)
+        assert lead.email == "alice@acme.com"
+
+    def test_invalid_email_rejected(self):
+        with pytest.raises(ValidationError):
+            LeadCreate(**{**_LEAD_BASE, "email": "not-an-email"})
+
+    def test_tags_deduplication(self):
+        lead = LeadCreate(**{**_LEAD_BASE, "tags": ["vip", "vip", "hot"]})
+        assert lead.tags == ["vip", "hot"]
+
+    def test_tags_whitespace_stripped(self):
+        lead = LeadCreate(**{**_LEAD_BASE, "tags": ["  vip  ", "hot"]})
+        assert lead.tags == ["vip", "hot"]
+
+    def test_tag_too_long_rejected(self):
+        with pytest.raises(ValidationError, match="50 characters"):
+            LeadCreate(**{**_LEAD_BASE, "tags": ["x" * 51]})
+
+    def test_tag_at_max_length_accepted(self):
+        lead = LeadCreate(**{**_LEAD_BASE, "tags": ["x" * 50]})
+        assert len(lead.tags[0]) == 50
+
+    def test_invalid_linkedin_url_rejected(self):
+        with pytest.raises(ValidationError, match="linkedin"):
+            LeadCreate(**{**_LEAD_BASE, "linkedin_url": "https://twitter.com/alice"})
+
+    def test_valid_linkedin_url_accepted(self):
+        lead = LeadCreate(**{**_LEAD_BASE, "linkedin_url": "https://www.linkedin.com/in/alice"})
+        assert lead.linkedin_url == "https://www.linkedin.com/in/alice"
+
+    def test_missing_first_name_rejected(self):
+        with pytest.raises(ValidationError):
+            LeadCreate(last_name="Smith", email="alice@acme.com")
+
+
+class TestLeadUpdateSchema:
+    def test_all_fields_optional(self):
+        update = LeadUpdate()
+        assert update.first_name is None
+
+    def test_tags_none_passthrough(self):
+        update = LeadUpdate(tags=None)
+        assert update.tags is None
+
+    def test_tags_dedup_on_update(self):
+        update = LeadUpdate(tags=["a", "a", "b"])
+        assert update.tags == ["a", "b"]
+
+    def test_invalid_email_rejected(self):
+        with pytest.raises(ValidationError):
+            LeadUpdate(email="bad-email")
