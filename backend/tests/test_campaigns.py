@@ -143,6 +143,16 @@ class TestCreateCampaign:
         )
         assert resp.status_code == 422
 
+    async def test_create_campaign_blank_name_returns_422(
+        self, client: AsyncClient, auth_headers: dict
+    ):
+        resp = await client.post(
+            "/api/v1/campaigns",
+            json={**CAMPAIGN_PAYLOAD, "name": ""},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 422
+
 
 # ---------------------------------------------------------------------------
 # List campaigns
@@ -228,6 +238,17 @@ class TestUpdateCampaign:
         )
         assert resp.status_code == 200
         assert resp.json()["name"] == "Updated Name"
+
+    async def test_patch_campaign_blank_name_returns_422(
+        self, client: AsyncClient, auth_headers: dict
+    ):
+        campaign = await create_campaign(client, auth_headers)
+        resp = await client.patch(
+            f"/api/v1/campaigns/{campaign['id']}",
+            json={"name": ""},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 422
 
     async def test_patch_active_campaign_returns_400(
         self, client: AsyncClient, auth_headers: dict, db_session

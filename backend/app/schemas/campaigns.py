@@ -14,7 +14,7 @@ def _parse_time(v: object) -> time:
 
 
 class CampaignCreate(BaseModel):
-    name: str = Field(..., max_length=255)
+    name: str = Field(..., min_length=1, max_length=255)
     product_name: str | None = None
     product_description: str | None = None
     icp_description: str | None = None
@@ -37,7 +37,7 @@ class CampaignCreate(BaseModel):
 
 
 class CampaignUpdate(BaseModel):
-    name: str | None = None
+    name: str | None = Field(None, min_length=1, max_length=255)
     product_name: str | None = None
     product_description: str | None = None
     icp_description: str | None = None
