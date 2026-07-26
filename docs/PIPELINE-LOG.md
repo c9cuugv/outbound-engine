@@ -15,3 +15,4 @@ Format: `YYYY-MM-DD | task | outcome (merged / blocked / no-op) | PR`
 2026-07-24 | (none — Queue empty) | no-op | -
 2026-07-25 | (none — Queue empty) | no-op | -
 2026-07-25 | (none — Queue empty) | no-op | -
+2026-07-25 | (none — Queue empty) | no-op | ANOMALY: local main carries unpushed commit e648602 "test(schemas): add LeadCreate/LeadUpdate pydantic unit tests" — committed directly to main outside the auto/<slug> branch+gate flow, in violation of the branch-only guardrail. Left unpushed, untouched, pending human review; not reverted or rewritten by this run.
