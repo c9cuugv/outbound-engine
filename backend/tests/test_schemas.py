@@ -309,6 +309,15 @@ class TestLeadCreateSchema:
         with pytest.raises(ValidationError):
             LeadCreate(last_name="Smith", email="alice@acme.com")
 
+    def test_whitespace_only_first_name_rejected(self):
+        with pytest.raises(ValidationError, match="blank or whitespace"):
+            LeadCreate(**{**_LEAD_BASE, "first_name": "   "})
+
+    def test_name_whitespace_stripped(self):
+        lead = LeadCreate(**{**_LEAD_BASE, "first_name": "  Alice  ", "last_name": "  Smith  "})
+        assert lead.first_name == "Alice"
+        assert lead.last_name == "Smith"
+
 
 class TestLeadUpdateSchema:
     def test_all_fields_optional(self):
@@ -326,3 +335,7 @@ class TestLeadUpdateSchema:
     def test_invalid_email_rejected(self):
         with pytest.raises(ValidationError):
             LeadUpdate(email="bad-email")
+
+    def test_whitespace_only_last_name_rejected_on_update(self):
+        with pytest.raises(ValidationError, match="blank or whitespace"):
+            LeadUpdate(last_name="   ")

@@ -16,6 +16,15 @@ def _validate_linkedin_url(v: str | None) -> str | None:
     return v
 
 
+def _validate_name(v: str | None) -> str | None:
+    if v is None:
+        return v
+    stripped = v.strip()
+    if not stripped:
+        raise ValueError("must not be blank or whitespace-only")
+    return stripped
+
+
 def _validate_tags(v: list[str]) -> list[str]:
     seen: set[str] = set()
     result: list[str] = []
@@ -41,6 +50,11 @@ class LeadCreate(BaseModel):
     custom_fields: dict = Field(default_factory=dict)
     source: str | None = Field(None, max_length=50)
 
+    @field_validator("first_name", "last_name")
+    @classmethod
+    def validate_name(cls, v: str) -> str:
+        return _validate_name(v)  # type: ignore[return-value]
+
     @field_validator("linkedin_url")
     @classmethod
     def validate_linkedin_url(cls, v: str | None) -> str | None:
@@ -63,6 +77,11 @@ class LeadUpdate(BaseModel):
     status: Literal["new", "contacted", "replied", "bounced", "unsubscribed"] | None = None
     tags: list[str] | None = None
     custom_fields: dict | None = None
+
+    @field_validator("first_name", "last_name")
+    @classmethod
+    def validate_name(cls, v: str | None) -> str | None:
+        return _validate_name(v)
 
     @field_validator("linkedin_url")
     @classmethod
