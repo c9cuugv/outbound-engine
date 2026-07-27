@@ -26,3 +26,4 @@ Format: `YYYY-MM-DD | task | outcome (merged / blocked / no-op) | PR`
 2026-07-27 | (none — Queue empty) | no-op | - (both unpushed anomaly commits e648602 and 3cb93a3 on main still pending human review, unchanged; local main now 10 commits ahead of origin/main)
 2026-07-27 | (none — Queue empty) | no-op | - (both unpushed anomaly commits e648602 and 3cb93a3 on main still pending human review, unchanged; local main remains 10 commits ahead of origin/main)
 2026-07-27 | (none — Queue empty) | no-op | - (both unpushed anomaly commits e648602 and 3cb93a3 on main still pending human review, unchanged; local main now 12 commits ahead of origin/main)
+2026-07-27 | (none — Queue empty) | no-op | - (anomaly persists: local main now 14 commits ahead of origin/main, incl. 3 direct-to-main commits e648602/3cb93a3/352a153 that bypassed the branch+gate workflow; not pushing — needs human review)
