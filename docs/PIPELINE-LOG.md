@@ -33,3 +33,4 @@ Format: `YYYY-MM-DD | task | outcome (merged / blocked / no-op) | PR`
 2026-07-28 | (none — Queue empty) | no-op | - (main and origin/main remain in sync, 0 ahead/0 behind; no anomaly this run)
 2026-07-28 | (none — Queue empty) | no-op | - (main and origin/main remain in sync, 0 ahead/0 behind; no anomaly this run)
 2026-08-08 | (none — Queue empty) | no-op | - (main and origin/main remain in sync, 0 ahead/0 behind; no anomaly this run)
+2026-08-08 | (none — stopped at sync step, dirty tree) | blocked | - (working tree dirty per step-1 guardrail: untracked package.json + package-lock.json at repo root, declaring dependency "headroom-ai": "^0.22.4" — not part of backend/ or frontend/ structure, origin unknown. Left untouched per contract; no backlog read, no branch created, no changes made. Needs human review before next run.)
